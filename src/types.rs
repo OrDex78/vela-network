@@ -56,7 +56,7 @@ impl fmt::Debug for Hash {
 
 /// 32-byte public key used as address (like Solana, not ETH-style 20 bytes)
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Address([u8; 32]);
+pub struct Address(pub [u8; 32]);
 
 impl Address {
     pub fn from_pubkey(pk: &VerifyingKey) -> Self {
