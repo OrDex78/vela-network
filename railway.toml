@@ -1,0 +1,6 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "./vela-node --port 8001"
