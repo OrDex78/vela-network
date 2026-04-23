@@ -1,38 +1,36 @@
 use std::sync::Arc;
-
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 use tracing::info;
-
-use crate::types::{Block, Hash};
-
-// ── Shared node state ─────────────────────────────────────────────────────────
+use crate::types::{Address, Block, Transaction};
 
 #[derive(Clone)]
 pub struct NodeState {
     pub port: u16,
     pub peer_count: Arc<RwLock<usize>>,
     pub blocks: Arc<RwLock<Vec<Block>>>,
+    pub mempool: Arc<RwLock<Vec<Transaction>>>,
+    pub tx_broadcast: mpsc::Sender<Transaction>,
 }
 
 impl NodeState {
-    pub fn new(port: u16) -> Self {
+    pub fn new(port: u16, tx_broadcast: mpsc::Sender<Transaction>) -> Self {
         NodeState {
             port,
             peer_count: Arc::new(RwLock::new(0)),
             blocks: Arc::new(RwLock::new(vec![Block::genesis()])),
+            mempool: Arc::new(RwLock::new(vec![])),
+            tx_broadcast,
         }
     }
 }
-
-// ── Response types ────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
 struct StatusResponse {
@@ -41,6 +39,7 @@ struct StatusResponse {
     port: u16,
     peer_count: usize,
     block_height: u64,
+    mempool_size: usize,
 }
 
 #[derive(Serialize)]
@@ -54,24 +53,38 @@ struct BlockResponse {
     round: u64,
 }
 
+#[derive(Deserialize)]
+pub struct SendTxRequest {
+    pub from: String,
+    pub to: String,
+    pub amount: u64,
+    pub fee: u64,
+    pub nonce: u64,
+}
+
+#[derive(Serialize)]
+struct TxResponse {
+    status: String,
+    tx_hash: String,
+}
+
 #[derive(Serialize)]
 struct ErrorResponse {
     error: String,
 }
 
-// ── Handlers ──────────────────────────────────────────────────────────────────
-
 async fn get_status(State(state): State<NodeState>) -> Json<StatusResponse> {
     let peer_count = *state.peer_count.read().await;
     let blocks = state.blocks.read().await;
+    let mempool = state.mempool.read().await;
     let height = blocks.last().map(|b| b.header.height).unwrap_or(0);
-
     Json(StatusResponse {
         node: "vela-node",
         version: "0.1.0",
         port: state.port,
         peer_count,
         block_height: height,
+        mempool_size: mempool.len(),
     })
 }
 
@@ -81,7 +94,6 @@ async fn get_block(
 ) -> Result<Json<BlockResponse>, (StatusCode, Json<ErrorResponse>)> {
     let blocks = state.blocks.read().await;
     let block = blocks.iter().find(|b| b.header.height == height);
-
     match block {
         Some(b) => Ok(Json(BlockResponse {
             height: b.header.height,
@@ -94,33 +106,51 @@ async fn get_block(
         })),
         None => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: format!("Block {} not found", height),
-            }),
+            Json(ErrorResponse { error: format!("Block {} not found", height) }),
         )),
     }
 }
 
 async fn get_balance(
-    State(state): State<NodeState>,
+    State(_state): State<NodeState>,
     Path(address): Path<String>,
 ) -> Json<serde_json::Value> {
-    // Stub — Day 5 will wire up real world state
     Json(serde_json::json!({
         "address": address,
         "balance": 0,
-        "nonce": 0,
-        "note": "balance tracking coming in Day 5"
+        "nonce": 0
     }))
 }
 
-// ── Router ────────────────────────────────────────────────────────────────────
+async fn post_send_tx(
+    State(state): State<NodeState>,
+    Json(req): Json<SendTxRequest>,
+) -> Result<Json<TxResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let from_bytes = hex::decode(req.from.trim_start_matches("vela:"))
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "invalid from".into() })))?;
+    let to_bytes = hex::decode(req.to.trim_start_matches("vela:"))
+        .map_err(|_| (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "invalid to".into() })))?;
+    if from_bytes.len() != 32 || to_bytes.len() != 32 {
+        return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "address must be 32 bytes".into() })));
+    }
+    let mut from_arr = [0u8; 32];
+    let mut to_arr = [0u8; 32];
+    from_arr.copy_from_slice(&from_bytes);
+    to_arr.copy_from_slice(&to_bytes);
+    let tx = Transaction::new(Address(from_arr), Address(to_arr), req.amount, req.fee, req.nonce);
+    let tx_hash = tx.hash().to_hex();
+    state.mempool.write().await.push(tx.clone());
+    info!("💸 TX added to mempool: {}", &tx_hash[..16]);
+    state.tx_broadcast.send(tx).await.ok();
+    Ok(Json(TxResponse { status: "accepted".into(), tx_hash }))
+}
 
 pub fn make_router(state: NodeState) -> Router {
     Router::new()
         .route("/status", get(get_status))
         .route("/block/{height}", get(get_block))
         .route("/balance/{address}", get(get_balance))
+        .route("/send_tx", post(post_send_tx))
         .with_state(state)
 }
 

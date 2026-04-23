@@ -14,7 +14,7 @@ use tracing::info;
 
 use network::{NetworkMessage, P2PNode};
 use rpc::{NodeState, start_rpc};
-use types::{Block, BlockHeader, Address, Hash};
+use types::{Address, Block, BlockHeader, Hash, Transaction};
 
 #[derive(Parser, Debug)]
 #[command(name = "vela-node", about = "Vela Network Node")]
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
 
     let args = Args::parse();
-    let rpc_port = args.port + 1000; // 8001 → 9001, 8002 → 9002, etc.
+    let rpc_port = args.port + 1000;
 
     info!("Starting Vela node on port {}", args.port);
     info!("RPC API on port {}", rpc_port);
@@ -42,11 +42,14 @@ async fn main() -> Result<()> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
-    // ── Shared state ──────────────────────────────────────────────────────────
-    let node_state = NodeState::new(args.port);
-
-    // ── P2P ───────────────────────────────────────────────────────────────────
+    // ── Channels ──────────────────────────────────────────────────────────────
     let (tx_in, mut rx_in) = mpsc::channel::<NetworkMessage>(256);
+    let (tx_broadcast, mut rx_broadcast) = mpsc::channel::<Transaction>(256);
+
+    // ── Shared state ──────────────────────────────────────────────────────────
+    let node_state = NodeState::new(args.port, tx_broadcast);
+
+    // ── P2P node ──────────────────────────────────────────────────────────────
     let node = P2PNode::new(args.port, bootstrap_peers, tx_in)?;
     let tx_out = node.tx_out.clone();
 
@@ -56,47 +59,80 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── Incoming message handler ──────────────────────────────────────────────
-    let state_for_p2p = node_state.clone();
+    // ── Incoming P2P messages ─────────────────────────────────────────────────
+    let state_p2p = node_state.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx_in.recv().await {
             match msg {
                 NetworkMessage::NewBlock(block) => {
                     info!("📦 Received block #{} from network", block.header.height);
-                    state_for_p2p.blocks.write().await.push(block);
+                    let mut blocks = state_p2p.blocks.write().await;
+                    let tip = blocks.last().map(|b| b.header.height).unwrap_or(0);
+                    if block.header.height == tip + 1 {
+                        blocks.push(block);
+                        info!("✅ Block committed, chain height: {}", tip + 1);
+                    }
                 }
                 NetworkMessage::NewTransaction(tx) => {
-                    info!("💸 Received tx {} from network", tx.hash().to_hex());
+                    info!("💸 Received tx from network");
+                    state_p2p.mempool.write().await.push(tx);
                 }
             }
         }
     });
 
-    // ── Broadcast dummy block after 3s ────────────────────────────────────────
-    let tx_out_clone = tx_out.clone();
+    // ── Broadcast txs from RPC to network ────────────────────────────────────
+    let tx_out_tx = tx_out.clone();
     tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        let dummy_block = Block {
-            header: BlockHeader {
-                height: 1,
-                parent_hash: Hash::ZERO,
-                tx_root: Hash::ZERO,
-                state_root: Hash::ZERO,
-                timestamp: chrono::Utc::now().timestamp_millis(),
-                proposer: Address([0u8; 32]),
-                round: 1,
-            },
-            transactions: vec![],
-            qc: None,
-        };
-        info!("📡 Broadcasting dummy block to network...");
-        tx_out_clone.send(NetworkMessage::NewBlock(dummy_block)).await.ok();
+        while let Some(tx) = rx_broadcast.recv().await {
+            tx_out_tx.send(NetworkMessage::NewTransaction(tx)).await.ok();
+        }
+    });
+
+    // ── Block production (every 10s, propose a block) ────────────────────────
+    let state_prod = node_state.clone();
+    let tx_out_prod = tx_out.clone();
+    tokio::spawn(async move {
+        let mut round = 1u64;
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+
+            let mut blocks = state_prod.blocks.write().await;
+            let mut mempool = state_prod.mempool.write().await;
+
+            let tip = blocks.last().unwrap();
+            let parent_hash = tip.hash();
+            let height = tip.header.height + 1;
+            let txs: Vec<_> = mempool.drain(..).take(100).collect();
+
+            let block = Block {
+                header: BlockHeader {
+                    height,
+                    parent_hash,
+                    tx_root: types::merkle_root(&txs),
+                    state_root: Hash::ZERO,
+                    timestamp: chrono::Utc::now().timestamp_millis(),
+                    proposer: Address([0u8; 32]),
+                    round,
+                },
+                transactions: txs,
+                qc: None,
+            };
+
+            info!("⛏️  Producing block #{} with {} txs", height, block.transactions.len());
+            blocks.push(block.clone());
+            drop(blocks);
+            drop(mempool);
+
+            tx_out_prod.send(NetworkMessage::NewBlock(block)).await.ok();
+            round += 1;
+        }
     });
 
     // ── RPC server ────────────────────────────────────────────────────────────
-    let state_for_rpc = node_state.clone();
+    let state_rpc = node_state.clone();
     tokio::spawn(async move {
-        start_rpc(state_for_rpc, rpc_port).await;
+        start_rpc(state_rpc, rpc_port).await;
     });
 
     tokio::signal::ctrl_c().await?;
