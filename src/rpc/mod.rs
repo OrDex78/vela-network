@@ -145,8 +145,13 @@ async fn post_send_tx(
     Ok(Json(TxResponse { status: "accepted".into(), tx_hash }))
 }
 
+async fn get_explorer() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("explorer.html"))
+}
+
 pub fn make_router(state: NodeState) -> Router {
     Router::new()
+        .route("/", get(get_explorer))
         .route("/status", get(get_status))
         .route("/block/{height}", get(get_block))
         .route("/balance/{address}", get(get_balance))
