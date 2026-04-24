@@ -160,7 +160,12 @@ pub fn make_router(state: NodeState) -> Router {
 }
 
 pub async fn start_rpc(state: NodeState, rpc_port: u16) {
-    let app = make_router(state);
+    use tower_http::cors::{Any, CorsLayer};
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    let app = make_router(state).layer(cors);
     let addr = format!("0.0.0.0:{}", rpc_port);
     info!("RPC server listening on http://{}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
