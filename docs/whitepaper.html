@@ -112,88 +112,69 @@ footer a:hover{text-decoration:underline}
   <!-- 1. Abstract -->
   <section id="abstract">
     <h2>1. Abstract</h2>
-    <p>Vela Network is an independent Layer-1 blockchain designed and implemented entirely from scratch in Rust. It is not a fork of any existing chain. Every component (consensus, networking, transaction processing, state management, and cryptographic signing) has been purpose-built to understand and demonstrate the fundamental mechanics of a modern blockchain system.</p>
-    <p>The network uses HotStuff BFT for consensus, libp2p for peer-to-peer communication, Ed25519 for digital signatures, and Blake3 for hashing. It runs a live testnet with a block explorer, web wallet, and faucet.</p>
+    <p>Vela is a Layer-1 blockchain I wrote from scratch in Rust. It's not a fork. The consensus, networking, transaction processing, and state management are all my own code. It runs on a live testnet right now with an explorer, wallet, and faucet.</p>
   </section>
 
   <!-- 2. Introduction -->
   <section id="introduction">
     <h2>2. Introduction</h2>
-    <p>Most blockchain projects start by forking an existing codebase (Geth, Substrate, Cosmos SDK) and customizing configuration. While practical, this approach obscures the underlying mechanics and limits deep understanding of the system.</p>
-    <p>Vela takes the opposite approach: build everything from first principles. The goals are:</p>
-    <ul>
-      <li><strong>Educational transparency</strong>: every line of code is written to be understood, not inherited.</li>
-      <li><strong>Minimal dependencies</strong>: rely only on well-audited cryptographic and networking libraries.</li>
-      <li><strong>Production-grade architecture</strong>: despite being educational, the system uses real BFT consensus, persistent storage, and proper transaction validation.</li>
-    </ul>
-    <p>Vela is written in Rust for its memory safety guarantees, zero-cost abstractions, and excellent async runtime support via Tokio.</p>
+    <p>I wanted to understand how blockchains actually work, not just at the API level but all the way down. Most projects fork Geth or build on Cosmos SDK, which is fine for shipping a product, but you don't really learn what's happening under the hood that way.</p>
+    <p>So I built Vela from an empty <code>cargo new</code>. Every struct, every message type, every state transition is written by hand. The goal was simple: if I can build a working blockchain from nothing, I actually understand the technology.</p>
+    <p>I picked Rust because it's fast, memory-safe without a garbage collector, and has great async support through Tokio. The type system also catches a lot of bugs at compile time, which matters when you're dealing with consensus logic.</p>
+    <p>The project only depends on a few well-known libraries: <code>ed25519-dalek</code> for signatures, <code>blake3</code> for hashing, <code>libp2p</code> for networking, <code>axum</code> for the HTTP API, and <code>sled</code> for storage. Everything else is written from scratch.</p>
   </section>
 
   <!-- 3. Consensus -->
   <section id="consensus">
     <h2>3. Consensus: HotStuff BFT</h2>
-    <p>Vela implements the HotStuff Byzantine Fault Tolerant consensus protocol, originally published by Yin et al. (2019). HotStuff provides several advantages over classical BFT protocols like PBFT:</p>
+    <p>Vela uses HotStuff BFT for consensus. It's the same protocol family that Aptos uses (originally designed for Facebook's Diem). I chose it over simpler options like PoA or Raft because I wanted to implement real Byzantine fault tolerance, and HotStuff has a clean design that's easier to get right than PBFT.</p>
 
     <h3>3.1 Why HotStuff?</h3>
-    <ul>
-      <li><strong>Linear message complexity</strong>: each phase requires only O(n) messages, compared to O(n²) in PBFT.</li>
-      <li><strong>Pipelined rounds</strong>: proposals, votes, and commits are overlapped across rounds for higher throughput.</li>
-      <li><strong>Deterministic finality</strong>: once a block is committed, it is final. No probabilistic confirmation.</li>
-      <li><strong>Leader rotation</strong>: a round-robin leader schedule ensures fairness among validators.</li>
-    </ul>
+    <p>The main advantage is message complexity. In PBFT, every validator talks to every other validator in each phase, so you get O(n²) messages. HotStuff funnels everything through the leader, so it's O(n) per phase. That means it can scale to more validators without the network getting overwhelmed.</p>
+    <p>It also gives you deterministic finality. Once a block is committed, it's done. No waiting for 6 confirmations like in Bitcoin.</p>
 
     <h3>3.2 Three-Phase Commit</h3>
     <div class="highlight">
-      <div class="label">HotStuff Phases</div>
-      <strong>Prepare</strong> → Leader proposes a block, replicas vote<br>
-      <strong>Pre-Commit</strong> → Leader aggregates votes into a Quorum Certificate (QC)<br>
-      <strong>Commit</strong> → Block is finalized with 2f+1 matching votes
+      <div class="label">How it works</div>
+      <strong>Prepare</strong> → The leader proposes a block and sends it to all validators. They check it and vote.<br>
+      <strong>Pre-Commit</strong> → The leader collects votes into a Quorum Certificate (QC), which proves enough validators agreed.<br>
+      <strong>Commit</strong> → With 2f+1 matching votes, the block is final.
     </div>
 
     <h3>3.3 Fault Tolerance</h3>
-    <p>With n = 3f + 1 validators, the protocol tolerates up to f Byzantine (malicious or crashed) nodes. Vela's testnet runs 3 validators (f = 0 for liveness, demonstrating the protocol structure). The architecture supports scaling to any validator set size.</p>
+    <p>The rule is n = 3f + 1, where f is the number of bad nodes you can tolerate. The testnet runs 3 validators, which is the minimum to demonstrate the protocol structure. The code supports any validator set size.</p>
   </section>
 
   <!-- 4. Network -->
   <section id="network">
     <h2>4. Network Layer</h2>
-    <p>Vela's peer-to-peer networking is built on libp2p, the modular networking stack used by Protocol Labs, Ethereum 2.0, and Polkadot.</p>
+    <p>Networking uses libp2p, the same stack that Ethereum 2.0 and Polkadot use. I didn't want to write my own TCP framing and peer management from scratch when a battle-tested library exists.</p>
 
     <h3>4.1 Transport</h3>
-    <p>Nodes communicate over TCP with Noise protocol encryption and Yamux stream multiplexing. Every connection is authenticated and encrypted by default.</p>
+    <p>Connections run over TCP with Noise encryption and Yamux multiplexing. Every connection is encrypted and authenticated automatically.</p>
 
-    <h3>4.2 Message Propagation: Gossipsub</h3>
-    <p>Blocks, transactions, and consensus messages are propagated using Gossipsub, a pubsub protocol optimized for blockchain workloads. Messages are published to three topic channels:</p>
+    <h3>4.2 Gossipsub</h3>
+    <p>Messages are broadcast using Gossipsub, a pubsub protocol designed for blockchains. There are three topic channels:</p>
     <ul>
-      <li><strong>vela-blocks</strong>: new blocks and chain sync messages</li>
-      <li><strong>vela-transactions</strong>: new transactions from wallets</li>
-      <li><strong>vela-consensus</strong>: votes and proposals between validators</li>
+      <li><code>vela-blocks</code> for new blocks and sync messages</li>
+      <li><code>vela-transactions</code> for incoming transactions</li>
+      <li><code>vela-consensus</code> for votes and proposals</li>
     </ul>
 
     <h3>4.3 Peer Discovery</h3>
-    <p>Local peers are discovered automatically via mDNS (multicast DNS). For remote peers, bootstrap addresses can be provided via CLI arguments or hardcoded in the binary. On startup, nodes send a SyncRequest to catch up on any blocks they missed while offline.</p>
+    <p>On a local network, nodes find each other automatically through mDNS. For remote nodes, you pass bootstrap addresses via the CLI or they're hardcoded in the binary. When a node starts up, it waits 2 seconds for connections and then sends a sync request to fetch any blocks it missed.</p>
   </section>
 
   <!-- 5. Cryptography -->
   <section id="cryptography">
     <h2>5. Cryptography</h2>
 
-    <h3>5.1 Digital Signatures: Ed25519</h3>
-    <p>All transactions and consensus votes are signed using Ed25519 (RFC 8032), an elliptic curve signature scheme offering:</p>
-    <ul>
-      <li><strong>Fast verification</strong>: significantly faster than ECDSA (secp256k1)</li>
-      <li><strong>Small keys</strong>: 32-byte private keys, 32-byte public keys, 64-byte signatures</li>
-      <li><strong>Deterministic signatures</strong>: no random nonce needed, eliminating a class of implementation bugs</li>
-    </ul>
-    <p>Addresses in Vela are the raw 32-byte Ed25519 public key, prefixed with <code>vela:</code> for human readability.</p>
+    <h3>5.1 Ed25519</h3>
+    <p>Every transaction and consensus vote is signed with Ed25519. I picked it over secp256k1 (what Bitcoin and Ethereum use) because it's faster to verify, the keys are smaller (32 bytes each), and signatures are deterministic so there's no risk of nonce-reuse bugs.</p>
+    <p>A Vela address is just the raw 32-byte public key with a <code>vela:</code> prefix. No hashing or encoding on top.</p>
 
-    <h3>5.2 Hashing: Blake3</h3>
-    <p>Vela uses Blake3 for all hashing operations: block hashes, transaction hashes, Merkle roots, and signing payloads. Blake3 is a cryptographic hash function that is:</p>
-    <ul>
-      <li><strong>Extremely fast</strong>: significantly outperforms SHA-256 and SHA-3</li>
-      <li><strong>Parallelizable</strong>: designed for SIMD and multi-threaded hashing</li>
-      <li><strong>Secure</strong>: based on the BLAKE2 and ChaCha families with a wide security margin</li>
-    </ul>
+    <h3>5.2 Blake3</h3>
+    <p>All hashing (block hashes, tx hashes, Merkle roots, signing payloads) uses Blake3. It's significantly faster than SHA-256, supports parallel hashing, and has a large security margin. It's based on the same family as BLAKE2 and ChaCha.</p>
   </section>
 
   <!-- 6. Tokenomics -->
@@ -209,13 +190,13 @@ footer a:hover{text-decoration:underline}
     </div>
 
     <h3>6.1 Genesis Distribution</h3>
-    <p>At genesis, the entire supply is allocated to a faucet address. This is a testnet design choice. The faucet allows any user to request tokens for testing. In a mainnet scenario, distribution would follow a more structured allocation.</p>
+    <p>On testnet, the entire supply starts in a faucet wallet. This is the simplest approach for a test network. On a real mainnet you'd want a proper allocation plan.</p>
 
     <h3>6.2 Faucet</h3>
-    <p>The testnet faucet distributes 10,000 VELA per request with a 24-hour cooldown per address. Faucet transactions are signed by the faucet's Ed25519 key and processed through the same transaction pipeline as user transactions.</p>
+    <p>The faucet gives out 10,000 VELA per request with a 24-hour cooldown per address. It works just like a normal transaction: the faucet has its own Ed25519 key, signs the tx, and it goes through the same mempool and validation pipeline as everything else.</p>
 
-    <h3>6.3 Future: Validator Rewards</h3>
-    <p>The architecture is designed to support validator staking and block rewards in future iterations. Leaders who successfully propose blocks will earn transaction fees collected from the included transactions.</p>
+    <h3>6.3 Validator Rewards (planned)</h3>
+    <p>The plan is to add staking and block rewards later. When a leader successfully proposes a block, they'll collect the transaction fees from the included transactions.</p>
   </section>
 
   <!-- 7. Roadmap -->
@@ -224,27 +205,27 @@ footer a:hover{text-decoration:underline}
     <div class="roadmap">
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 1: Core Protocol</strong><br>Custom blockchain with HotStuff BFT, libp2p, Ed25519, persistent storage</div>
+        <div class="roadmap-text"><strong>Phase 1: Core Protocol</strong><br>Block/tx types, HotStuff BFT, libp2p, Ed25519, sled storage</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 2: Testnet Launch</strong><br>Live testnet with block explorer, web wallet, and faucet</div>
+        <div class="roadmap-text"><strong>Phase 2: Testnet</strong><br>Deployed on Railway with explorer, wallet, and faucet</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 3: Transaction Validation</strong><br>Nonce enforcement, balance checks, mempool deduplication, chain sync</div>
+        <div class="roadmap-text"><strong>Phase 3: Validation</strong><br>Nonce checks, balance checks, mempool dedup, chain sync</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot active"></div>
-        <div class="roadmap-text"><strong>Phase 4: Network Hardening</strong><br>Bootstrap peers, chain sync protocol, improved peer management</div>
+        <div class="roadmap-text"><strong>Phase 4: Network</strong><br>Bootstrap peers, sync protocol, better peer management</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot future"></div>
-        <div class="roadmap-text"><strong>Phase 5: Smart Contracts</strong><br>Basic programmable transactions and on-chain logic execution</div>
+        <div class="roadmap-text"><strong>Phase 5: Smart Contracts</strong><br>Programmable transactions, on-chain logic</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot future"></div>
-        <div class="roadmap-text"><strong>Phase 6: Mainnet</strong><br>Production deployment with expanded validator set, staking, and governance</div>
+        <div class="roadmap-text"><strong>Phase 6: Mainnet</strong><br>More validators, staking, governance</div>
       </div>
     </div>
   </section>
@@ -252,9 +233,9 @@ footer a:hover{text-decoration:underline}
   <!-- 8. Conclusion -->
   <section id="conclusion">
     <h2>8. Conclusion</h2>
-    <p>Vela Network demonstrates that a fully functional Layer-1 blockchain can be built from scratch with modern tools. By choosing Rust, HotStuff BFT, libp2p, Ed25519, and Blake3, the project achieves a balance of performance, security, and clarity.</p>
-    <p>Every component is open source and designed to be read, studied, and extended. Vela is not just a blockchain. It is a reference implementation for anyone who wants to understand how blockchains actually work under the hood.</p>
-    <p style="margin-top:24px;color:#64748b;font-size:.85rem">The full source code is available at <a href="https://github.com/OrDex78/vela-network" target="_blank" style="color:#38bdf8;text-decoration:none">github.com/OrDex78/vela-network</a>.</p>
+    <p>Vela is a working blockchain written from scratch. The whole point was to prove that you can build one without forking someone else's code, and to actually learn how every piece fits together in the process.</p>
+    <p>All the code is open source. If you want to understand how blockchains work at the implementation level, reading through this codebase is a good place to start.</p>
+    <p style="margin-top:24px;color:#64748b;font-size:.85rem">Source: <a href="https://github.com/OrDex78/vela-network" target="_blank" style="color:#38bdf8;text-decoration:none">github.com/OrDex78/vela-network</a></p>
   </section>
 
 </div>
