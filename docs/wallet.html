@@ -117,53 +117,65 @@ input:focus { outline: none; border-color: #38bdf8; }
 
 </div>
 
-<script>
+<script type="module">
+import * as ed from 'https://esm.run/@noble/ed25519@2.1.0';
+import { blake3 } from 'https://esm.run/@noble/hashes@1.4.0/blake3';
+
 const RPC = 'https://vela-network-production.up.railway.app';
-const NACL_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js';
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-}
-
-let nacl;
-async function ensureNacl() {
-  if (window.nacl) { nacl = window.nacl; return; }
-  await loadScript(NACL_CDN);
-  nacl = window.nacl;
-}
 
 function bytesToHex(b) { return Array.from(b).map(x => x.toString(16).padStart(2,'0')).join(''); }
 function hexToBytes(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16))); }
 
+function putLE64(view, offset, val) {
+  view.setBigUint64(offset, BigInt(val), true);
+}
+
+// Replicate Rust Transaction::signing_bytes()
+function signingBytes(fromHex, toHex, amount, fee, nonce, timestamp) {
+  const fromBytes = hexToBytes(fromHex);
+  const toBytes = hexToBytes(toHex);
+  const buf = new Uint8Array(32 + 32 + 8 + 8 + 8 + 8);
+  const view = new DataView(buf.buffer);
+  let off = 0;
+  buf.set(fromBytes, off); off += 32;
+  buf.set(toBytes, off); off += 32;
+  putLE64(view, off, amount); off += 8;
+  putLE64(view, off, fee); off += 8;
+  putLE64(view, off, nonce); off += 8;
+  putLE64(view, off, timestamp); off += 8;
+  // data is empty vec, nothing to append
+  return blake3(buf);
+}
+
+async function signTx(privHex, fromHex, toHex, amount, fee, nonce, timestamp) {
+  const hash = signingBytes(fromHex, toHex, amount, fee, nonce, timestamp);
+  const sig = await ed.signAsync(hash, privHex);
+  return bytesToHex(sig);
+}
+
 async function generateWallet() {
-  await ensureNacl();
-  const kp = nacl.sign.keyPair();
-  const privHex = bytesToHex(kp.secretKey.slice(0,32));
-  const pubHex = bytesToHex(kp.publicKey);
+  const privBytes = ed.etc.randomBytes(32);
+  const pubBytes = await ed.getPublicKeyAsync(privBytes);
+  const privHex = bytesToHex(privBytes);
+  const pubHex = bytesToHex(pubBytes);
   const address = 'vela:' + pubHex;
   saveWallet(privHex, pubHex, address);
   showWallet();
 }
 
-function importWallet() {
+async function importWallet() {
   const privHex = document.getElementById('import-key').value.trim();
-  if (privHex.length !== 64) { alert('Invalid key — must be 64 hex chars'); return; }
-  ensureNacl().then(() => {
-    const kp = nacl.sign.keyPair.fromSeed(hexToBytes(privHex));
-    const pubHex = bytesToHex(kp.publicKey);
-    const address = 'vela:' + pubHex;
-    saveWallet(privHex, pubHex, address);
-    showWallet();
-  });
+  if (privHex.length !== 64) { alert('Invalid key: must be 64 hex chars'); return; }
+  const pubBytes = await ed.getPublicKeyAsync(privHex);
+  const pubHex = bytesToHex(pubBytes);
+  const address = 'vela:' + pubHex;
+  saveWallet(privHex, pubHex, address);
+  showWallet();
 }
 
-function saveWallet(priv, pub, address) {
+function saveWallet(priv, pub_, address) {
   localStorage.setItem('vela_priv', priv);
-  localStorage.setItem('vela_pub', pub);
+  localStorage.setItem('vela_pub', pub_);
   localStorage.setItem('vela_address', address);
 }
 
@@ -212,14 +224,13 @@ async function refreshBalance() {
 }
 
 async function sendTx() {
-  await ensureNacl();
   const w = loadWallet();
   const to = document.getElementById('to-address').value.trim();
   const amount = parseInt(document.getElementById('amount').value);
   let nonce = parseInt(document.getElementById('nonce').value);
-  const status = document.getElementById('send-status');
+  const statusEl = document.getElementById('send-status');
 
-  if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
+  if (!to || !amount) { showStatus(statusEl, 'Fill in all fields', 'error'); return; }
 
   // Auto-fetch nonce if empty
   if (!nonce || isNaN(nonce)) {
@@ -228,28 +239,32 @@ async function sendTx() {
       nonce = (balData.nonce || 0) + 1;
       document.getElementById('nonce').value = nonce;
     } catch(e) {
-      showStatus(status, 'Cannot connect to node', 'error');
+      showStatus(statusEl, 'Cannot connect to node', 'error');
       return;
     }
   }
 
   const fee = 1;
+  const timestamp = Date.now();
+  const fromHex = w.address.replace('vela:', '');
+  const toHex = to.replace('vela:', '');
 
   try {
+    const signature = await signTx(w.priv, fromHex, toHex, amount, fee, nonce, timestamp);
     const resp = await fetch(RPC + '/send_tx', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: w.address, to, amount, fee, nonce })
+      body: JSON.stringify({ from: w.address, to, amount, fee, nonce, timestamp, signature })
     }).then(r => r.json());
 
     if (resp.tx_hash) {
-      showStatus(status, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
+      showStatus(statusEl, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
       document.getElementById('nonce').value = nonce + 1;
     } else {
-      showStatus(status, '❌ ' + (resp.error || 'Failed'), 'error');
+      showStatus(statusEl, '❌ ' + (resp.error || 'Failed'), 'error');
     }
   } catch(e) {
-    showStatus(status, '❌ Cannot connect to node', 'error');
+    showStatus(statusEl, '❌ Cannot connect to node', 'error');
   }
 }
 
@@ -300,6 +315,17 @@ function togglePrivkey() {
   const el = document.getElementById('display-privkey');
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
+
+// Expose functions to onclick handlers
+window.generateWallet = generateWallet;
+window.importWallet = importWallet;
+window.deleteWallet = deleteWallet;
+window.showImport = showImport;
+window.sendTx = sendTx;
+window.refreshBalance = refreshBalance;
+window.showSection = showSection;
+window.copyAddress = copyAddress;
+window.togglePrivkey = togglePrivkey;
 
 window.onload = () => {
   const w = loadWallet();

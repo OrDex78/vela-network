@@ -86,6 +86,7 @@ pub struct SendTxRequest {
     pub fee: u64,
     pub nonce: u64,
     pub signature: Option<String>,
+    pub timestamp: Option<i64>,
 }
 
 #[derive(Serialize)]
@@ -281,6 +282,9 @@ async fn post_send_tx(
         }
     }
     let mut tx = Transaction::new(from_addr, Address(to_arr), req.amount, req.fee, req.nonce);
+    if let Some(ts) = req.timestamp {
+        tx.timestamp = ts;
+    }
     if let Some(sig_hex) = req.signature {
         if let Ok(sig_bytes) = hex::decode(&sig_hex) {
             tx.signature = Some(sig_bytes);
