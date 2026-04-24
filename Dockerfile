@@ -8,5 +8,11 @@ RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/
 WORKDIR /app
 COPY --from=builder /app/target/release/vela-node .
 COPY --from=builder /app/src/rpc/explorer.html src/rpc/explorer.html
-EXPOSE 8001 9001
-CMD ["./vela-node", "--port", "8001", "--validator-index", "0"]
+
+ENV P2P_PORT=8001
+ENV HTTP_PORT=9001
+ENV VALIDATOR_INDEX=0
+ENV BOOTSTRAP_ADDR=""
+
+EXPOSE ${P2P_PORT} ${HTTP_PORT}
+CMD ./vela-node --port ${P2P_PORT} --validator-index ${VALIDATOR_INDEX}

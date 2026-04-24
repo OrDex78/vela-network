@@ -13,7 +13,7 @@ use libp2p::Multiaddr;
 use rand::rngs::OsRng;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use tracing::info;
+use tracing::{info, warn};
 
 use consensus::hotstuff::{ConsensusConfig, HotStuffNode};
 use network::{NetworkMessage, P2PNode};
@@ -58,6 +58,20 @@ async fn main() -> Result<()> {
         .iter()
         .filter_map(|s| s.parse().ok())
         .collect();
+
+    // Env var fallback: BOOTSTRAP_ADDR (comma-separated multiaddrs)
+    if let Ok(env_addrs) = std::env::var("BOOTSTRAP_ADDR") {
+        for s in env_addrs.split(',') {
+            let s = s.trim();
+            if !s.is_empty() {
+                if let Ok(addr) = s.parse() {
+                    bootstrap_peers.push(addr);
+                } else {
+                    warn!("Invalid BOOTSTRAP_ADDR entry: {}", s);
+                }
+            }
+        }
+    }
 
     // Add hardcoded bootstrap peers
     for peer in BOOTSTRAP_PEERS {
