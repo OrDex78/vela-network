@@ -8,7 +8,5 @@ RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/
 WORKDIR /app
 COPY --from=builder /app/target/release/vela-node .
 COPY --from=builder /app/src/rpc/explorer.html src/rpc/explorer.html
-RUN mkdir -p /data
-VOLUME ["/data"]
 EXPOSE 8001 9001
 CMD ["./vela-node", "--port", "8001"]
