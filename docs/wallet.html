@@ -234,23 +234,12 @@ async function sendTx() {
   }
 
   const fee = 1;
-  const kp = nacl.sign.keyPair.fromSeed(hexToBytes(w.priv));
-  const msgParts = [
-    w.address.replace('vela:', ''),
-    to.replace('vela:', ''),
-    amount.toString(),
-    fee.toString(),
-    nonce.toString(),
-  ];
-  const msgBytes = new TextEncoder().encode(msgParts.join(':'));
-  const sigBytes = nacl.sign.detached(msgBytes, kp.secretKey);
-  const sigHex = bytesToHex(sigBytes);
 
   try {
     const resp = await fetch(RPC + '/send_tx', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: w.address, to, amount, fee, nonce, signature: sigHex })
+      body: JSON.stringify({ from: w.address, to, amount, fee, nonce })
     }).then(r => r.json());
 
     if (resp.tx_hash) {
