@@ -12,7 +12,8 @@ use libp2p::{
     tcp, yamux, Multiaddr, PeerId, SwarmBuilder,
 };
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
 use tracing::{error, info, warn};
 
 use crate::types::{Block, Transaction, Vote};
@@ -44,6 +45,7 @@ pub struct P2PNode {
     pub tx_out: mpsc::Sender<NetworkMessage>,
     rx_out: mpsc::Receiver<NetworkMessage>,
     pub tx_in: mpsc::Sender<NetworkMessage>,
+    peer_count: Arc<RwLock<usize>>,
 }
 
 impl P2PNode {
@@ -51,6 +53,7 @@ impl P2PNode {
         port: u16,
         bootstrap_peers: Vec<Multiaddr>,
         tx_in: mpsc::Sender<NetworkMessage>,
+        peer_count: Arc<RwLock<usize>>,
     ) -> Result<Self> {
         let (tx_out, rx_out) = mpsc::channel(256);
         let keypair = libp2p::identity::Keypair::generate_ed25519();
@@ -63,6 +66,7 @@ impl P2PNode {
             tx_out,
             rx_out,
             tx_in,
+            peer_count,
         })
     }
 
@@ -184,12 +188,16 @@ impl P2PNode {
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                             info!("✅ Connected to peer: {}", peer_id);
+                            let count = swarm.connected_peers().count();
+                            *self.peer_count.write().await = count;
                         }
                         SwarmEvent::OutgoingConnectionError { error, .. } => {
                             warn!("❌ Failed to connect to bootstrap: {}", error);
                         }
                         SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                             warn!("🔌 Connection closed: {} — {:?}", peer_id, cause);
+                            let count = swarm.connected_peers().count();
+                            *self.peer_count.write().await = count;
                         }
                         _ => {}
                     }

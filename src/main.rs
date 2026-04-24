@@ -148,7 +148,7 @@ async fn main() -> Result<()> {
         initial_world_state,
     );
 
-    let node = P2PNode::new(port, bootstrap_peers, tx_in)?;
+    let node = P2PNode::new(port, bootstrap_peers, tx_in, node_state.peer_count.clone())?;
     let tx_out = node.tx_out.clone();
 
     tokio::spawn(async move {
