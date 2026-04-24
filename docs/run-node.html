@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Run a Node | Vela Network</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#c9d1d9;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.9);backdrop-filter:blur(12px);border-bottom:1px solid #1e3a5f}
+nav .inner{max-width:820px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+nav .logo{display:flex;align-items:center;gap:10px;font-size:1.1rem;font-weight:700;color:#38bdf8;letter-spacing:1.5px;text-decoration:none}
+nav .logo .hex{font-size:1.4rem}
+nav .badge{background:#0ea5e9;color:#000;padding:2px 10px;border-radius:20px;font-size:.6rem;font-weight:700;letter-spacing:1px}
+nav .links{display:flex;gap:20px}
+nav .links a{color:#94a3b8;text-decoration:none;font-size:.82rem;transition:color .2s}
+nav .links a:hover{color:#38bdf8}
+
+.container{max-width:760px;margin:0 auto;padding:100px 24px 80px}
+
+.title-block{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid #1e3a5f}
+.title-block h1{font-size:2.2rem;font-weight:800;letter-spacing:-1px;margin-bottom:8px;color:#f1f5f9}
+.title-block p{font-size:.95rem;color:#64748b}
+
+section{margin-bottom:40px}
+section h2{font-size:1.35rem;font-weight:700;color:#f1f5f9;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e3a5f20}
+section h3{font-size:1.05rem;font-weight:600;color:#e2e8f0;margin:16px 0 8px}
+section p{margin-bottom:12px;font-size:.9rem;color:#94a3b8}
+section ul{padding-left:22px;margin-bottom:12px}
+section li{margin-bottom:4px;font-size:.88rem;color:#94a3b8}
+section code{background:#161b22;padding:2px 6px;border-radius:4px;font-size:.84rem;color:#e2e8f0;font-family:'Courier New',monospace}
+
+pre{background:#0d1117;border:1px solid #1e3a5f;border-radius:10px;padding:16px 20px;margin:12px 0 16px;overflow-x:auto;font-size:.82rem;line-height:1.6;color:#c9d1d9;font-family:'Courier New',monospace}
+pre .comment{color:#484f58}
+pre .prompt{color:#64748b}
+
+.note{background:#0d1117;border-left:3px solid #38bdf8;border-radius:0 8px 8px 0;padding:14px 18px;margin:12px 0 16px;font-size:.84rem;color:#94a3b8}
+
+table{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:.84rem}
+th{text-align:left;padding:10px 12px;background:#0d1117;color:#64748b;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #1e3a5f}
+td{padding:10px 12px;border-bottom:1px solid #1e3a5f20;color:#94a3b8}
+td code{background:#161b22;padding:2px 6px;border-radius:4px;font-size:.82rem;color:#e2e8f0;font-family:'Courier New',monospace}
+td:first-child{color:#c9d1d9;font-weight:500}
+
+footer{border-top:1px solid #1e3a5f;padding:32px 24px;text-align:center}
+footer p{font-size:.78rem;color:#475569}
+footer a{color:#38bdf8;text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media(max-width:600px){
+  .title-block h1{font-size:1.6rem}
+  nav .links{display:none}
+  pre{font-size:.75rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/vela-network/" class="logo"><span class="hex">⬡</span> VELA <span class="badge">GUIDE</span></a>
+    <div class="links">
+      <a href="/vela-network/">Home</a>
+      <a href="/vela-network/wallet.html">Wallet</a>
+      <a href="/vela-network/whitepaper.html">Whitepaper</a>
+      <a href="https://github.com/OrDex78/vela-network" target="_blank">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="title-block">
+    <h1>Run a Vela Node</h1>
+    <p>How to build, run, and connect a validator to the Vela testnet.</p>
+  </div>
+
+  <!-- Prerequisites -->
+  <section>
+    <h2>1. Prerequisites</h2>
+    <ul>
+      <li><strong>Rust 1.86+</strong> &mdash; install from <a href="https://rustup.rs" style="color:#38bdf8">rustup.rs</a></li>
+      <li><strong>Git</strong></li>
+    </ul>
+    <p>Check your Rust version:</p>
+    <pre><span class="prompt">$</span> rustc --version
+rustc 1.86.0 (05f9846f8 2025-03-31)</pre>
+  </section>
+
+  <!-- Clone & Build -->
+  <section>
+    <h2>2. Clone and Build</h2>
+    <pre><span class="prompt">$</span> git clone https://github.com/OrDex78/vela-network
+<span class="prompt">$</span> cd vela-network
+<span class="prompt">$</span> cargo build --release --bin vela-node</pre>
+    <p>The binary will be at <code>./target/release/vela-node</code>.</p>
+  </section>
+
+  <!-- Single Node -->
+  <section>
+    <h2>3. Run a Single Node</h2>
+    <pre><span class="prompt">$</span> ./target/release/vela-node --port 8001 --validator-index 0</pre>
+    <p>This starts a node listening on port 8001 for P2P and port 9001 for the HTTP API and explorer. Open <a href="http://localhost:9001" style="color:#38bdf8">http://localhost:9001</a> to see the explorer.</p>
+    <div class="note">The <code>--validator-index</code> flag selects which keypair the node uses (0, 1, or 2). Each index maps to a different Ed25519 key in the hardcoded validator set.</div>
+  </section>
+
+  <!-- 3 Validators -->
+  <section>
+    <h2>4. Run 3 Validators Locally</h2>
+    <p>Open three terminals:</p>
+    <pre><span class="comment"># Terminal 1: Validator 0</span>
+<span class="prompt">$</span> ./target/release/vela-node --port 8001 --validator-index 0
+
+<span class="comment"># Terminal 2: Validator 1</span>
+<span class="prompt">$</span> ./target/release/vela-node --port 8002 --validator-index 1 \
+    --bootstrap /ip4/127.0.0.1/tcp/8001
+
+<span class="comment"># Terminal 3: Validator 2</span>
+<span class="prompt">$</span> ./target/release/vela-node --port 8003 --validator-index 2 \
+    --bootstrap /ip4/127.0.0.1/tcp/8001</pre>
+    <p>On the same machine, nodes also find each other through mDNS, so the <code>--bootstrap</code> flag is optional locally. It's required when connecting across machines.</p>
+    <p>Each node takes turns as leader in a round-robin schedule. You should see blocks being produced and finalized across all three terminals.</p>
+  </section>
+
+  <!-- Public Testnet -->
+  <section>
+    <h2>5. Connect to the Public Testnet</h2>
+    <p>To sync with the live testnet running on Railway, bootstrap against the public node:</p>
+    <pre><span class="prompt">$</span> ./target/release/vela-node --port 8001 --validator-index 0 \
+    --bootstrap /dns4/vela-network-production.up.railway.app/tcp/8001</pre>
+    <p>On startup, your node will connect to the public peer, send a sync request, and download all blocks it missed. After syncing, it participates in consensus normally.</p>
+    <div class="note">The public testnet explorer is at <a href="https://vela-network-production.up.railway.app" style="color:#38bdf8">vela-network-production.up.railway.app</a>.</div>
+  </section>
+
+  <!-- CLI Flags -->
+  <section>
+    <h2>6. CLI Flags</h2>
+    <table>
+      <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>--port</code></td><td>8001</td><td>P2P listen port (HTTP API runs on port + 1000)</td></tr>
+      <tr><td><code>--validator-index</code></td><td>0</td><td>Which validator keypair to use (0, 1, or 2)</td></tr>
+      <tr><td><code>--bootstrap</code></td><td>none</td><td>Comma-separated multiaddrs of peers to connect to</td></tr>
+    </table>
+  </section>
+
+  <!-- API -->
+  <section>
+    <h2>7. API Endpoints</h2>
+    <p>The HTTP API runs on the P2P port + 1000 (default: 9001).</p>
+    <table>
+      <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+      <tr><td>GET</td><td><code>/status</code></td><td>Block height, peer count, mempool size, version</td></tr>
+      <tr><td>GET</td><td><code>/block/{height}</code></td><td>Block details by height</td></tr>
+      <tr><td>GET</td><td><code>/balance/{address}</code></td><td>Balance and nonce for an address</td></tr>
+      <tr><td>GET</td><td><code>/transactions/{address}</code></td><td>Transaction history for an address</td></tr>
+      <tr><td>GET</td><td><code>/validators</code></td><td>Validator set and current leader</td></tr>
+      <tr><td>POST</td><td><code>/send_tx</code></td><td>Submit a signed transaction (JSON body)</td></tr>
+      <tr><td>POST</td><td><code>/faucet/{address}</code></td><td>Request testnet tokens (24h cooldown)</td></tr>
+    </table>
+    <h3>Example: check node status</h3>
+    <pre><span class="prompt">$</span> curl http://localhost:9001/status | jq
+{
+  "block_height": 142,
+  "peer_count": 2,
+  "mempool_size": 0,
+  "current_leader": 1,
+  "version": "0.1.0"
+}</pre>
+  </section>
+
+</div>
+
+<footer>
+  <p>Built by <a href="https://github.com/OrDex78" target="_blank">Gaurav Sharma</a> · <a href="https://twitter.com/gauravshar64966" target="_blank">@gauravshar64966</a></p>
+  <p style="margin-top:8px">&copy; 2025 Vela Network</p>
+</footer>
+
+</body>
+</html>
