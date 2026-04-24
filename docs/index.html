@@ -210,6 +210,7 @@ async function refreshBalance() {
 }
 
 async function sendTx() {
+  await ensureNacl();
   const w = loadWallet();
   const to = document.getElementById('to-address').value.trim();
   const amount = parseInt(document.getElementById('amount').value);
@@ -218,13 +219,26 @@ async function sendTx() {
 
   if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
 
+  // Sign the transaction
+  const fee = 1;
+  const kp = nacl.sign.keyPair.fromSeed(hexToBytes(w.priv));
+  const msgParts = [
+    w.address.replace('vela:', ''),
+    to.replace('vela:', ''),
+    amount.toString(),
+    fee.toString(),
+    nonce.toString(),
+  ];
+  const msgBytes = new TextEncoder().encode(msgParts.join(':'));
+  const sigBytes = nacl.sign.detached(msgBytes, kp.secretKey);
+  const sigHex = bytesToHex(sigBytes);
+
   try {
     const resp = await fetch(RPC + '/send_tx', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: w.address, to, amount, fee: 1, nonce })
+      body: JSON.stringify({ from: w.address, to, amount, fee, nonce, signature: sigHex })
     }).then(r => r.json());
-
     if (resp.tx_hash) {
       showStatus(status, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
       document.getElementById('nonce').value = nonce + 1;

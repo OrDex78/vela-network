@@ -63,6 +63,7 @@ pub struct SendTxRequest {
     pub amount: u64,
     pub fee: u64,
     pub nonce: u64,
+    pub signature: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -151,7 +152,30 @@ async fn post_send_tx(
     let mut to_arr = [0u8; 32];
     from_arr.copy_from_slice(&from_bytes);
     to_arr.copy_from_slice(&to_bytes);
-    let tx = Transaction::new(Address(from_arr), Address(to_arr), req.amount, req.fee, req.nonce);
+
+    let mut tx = Transaction::new(
+        Address(from_arr),
+        Address(to_arr),
+        req.amount,
+        req.fee,
+        req.nonce,
+    );
+
+    // Attach signature if provided
+    if let Some(sig_hex) = req.signature {
+        if let Ok(sig_bytes) = hex::decode(&sig_hex) {
+            tx.signature = Some(sig_bytes);
+        }
+    }
+
+    // Verify signature if present
+    if tx.signature.is_some() && !tx.verify() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse { error: "invalid signature".into() }),
+        ));
+    }
+
     let tx_hash = tx.hash().to_hex();
     state.mempool.write().await.push(tx.clone());
     info!("💸 TX added to mempool: {}", &tx_hash[..16]);
