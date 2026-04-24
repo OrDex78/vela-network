@@ -16,17 +16,37 @@
   .stat .value { color: #38bdf8; font-size: 1.8rem; font-weight: bold; margin-top: 8px; }
   .section { padding: 0 40px 40px; }
   .section h2 { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; }
-  .block-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.2s; }
-  .block-card:hover { border-color: #38bdf8; cursor: pointer; }
+  .block-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.2s; cursor: pointer; }
+  .block-card:hover { border-color: #38bdf8; }
   .block-card .height { color: #38bdf8; font-size: 1.1rem; font-weight: bold; }
   .block-card .hash { color: #64748b; font-size: 0.75rem; margin-top: 4px; }
   .block-card .right { text-align: right; }
   .block-card .txcount { color: #0ea5e9; font-size: 0.85rem; }
   .block-card .time { color: #475569; font-size: 0.75rem; margin-top: 4px; }
-  .badge { display: inline-block; background: #0ea5e920; color: #0ea5e9; border: 1px solid #0ea5e940; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
   #status-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .loading { color: #475569; text-align: center; padding: 40px; }
+
+  /* Modal */
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000000cc; z-index: 100; overflow-y: auto; }
+  .modal.open { display: block; }
+  .modal-content { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 12px; max-width: 700px; margin: 60px auto; padding: 32px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .modal-header h2 { color: #38bdf8; font-size: 1.2rem; }
+  .close-btn { color: #64748b; cursor: pointer; font-size: 1.5rem; }
+  .close-btn:hover { color: #e2e8f0; }
+  .detail-row { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.8rem; }
+  .detail-row .key { color: #64748b; min-width: 120px; }
+  .detail-row .val { color: #e2e8f0; word-break: break-all; }
+  .tx-card { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.75rem; }
+  .tx-card .tx-hash { color: #38bdf8; margin-bottom: 8px; }
+  .tx-card .tx-row { display: flex; gap: 8px; margin-bottom: 4px; }
+  .tx-card .tx-key { color: #64748b; min-width: 60px; }
+  .tx-card .tx-val { color: #e2e8f0; word-break: break-all; }
+  .empty-txs { color: #475569; text-align: center; padding: 20px; font-size: 0.8rem; }
+  .nav-links { display: flex; gap: 12px; padding: 0 40px 16px; }
+  .nav-links a { color: #38bdf8; font-size: 0.8rem; text-decoration: none; border: 1px solid #1e3a5f; padding: 6px 16px; border-radius: 6px; }
+  .nav-links a:hover { border-color: #38bdf8; }
 </style>
 </head>
 <body>
@@ -43,9 +63,24 @@
   <div class="stat"><div class="label">Version</div><div class="value" style="font-size:1rem;padding-top:8px" id="version">—</div></div>
 </div>
 
+<div class="nav-links">
+  <a href="/wallet">💰 Wallet</a>
+</div>
+
 <div class="section">
   <h2>Latest Blocks</h2>
   <div id="blocks-list"><div class="loading">Loading blocks...</div></div>
+</div>
+
+<!-- Block detail modal -->
+<div class="modal" id="block-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modal-title">Block Details</h2>
+      <span class="close-btn" onclick="closeModal()">✕</span>
+    </div>
+    <div id="modal-body"></div>
+  </div>
 </div>
 
 <script>
@@ -66,6 +101,36 @@ function timeAgo(ms) {
   if (diff < 60000) return Math.floor(diff/1000) + 's ago';
   if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
   return Math.floor(diff/3600000) + 'h ago';
+}
+
+async function showBlockDetail(height) {
+  const b = await fetchBlock(height);
+  document.getElementById('modal-title').textContent = `Block #${b.height}`;
+  
+  let txHtml = '';
+  if (b.tx_count === 0) {
+    txHtml = '<div class="empty-txs">No transactions in this block</div>';
+  } else {
+    txHtml = '<div style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Transactions</div>';
+    // We don't have full tx data from block endpoint yet, show count
+    txHtml += `<div class="empty-txs">${b.tx_count} transaction(s) — full tx details coming soon</div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row"><span class="key">Height</span><span class="val">${b.height}</span></div>
+    <div class="detail-row"><span class="key">Hash</span><span class="val">${b.hash}</span></div>
+    <div class="detail-row"><span class="key">Parent Hash</span><span class="val">${b.parent_hash}</span></div>
+    <div class="detail-row"><span class="key">Transactions</span><span class="val">${b.tx_count}</span></div>
+    <div class="detail-row"><span class="key">Timestamp</span><span class="val">${new Date(b.timestamp).toLocaleString()}</span></div>
+    <div class="detail-row"><span class="key">Proposer</span><span class="val">${b.proposer}</span></div>
+    <div class="detail-row"><span class="key">Round</span><span class="val">${b.round}</span></div>
+    ${txHtml}
+  `;
+  document.getElementById('block-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('block-modal').classList.remove('open');
 }
 
 async function refresh() {
@@ -89,7 +154,7 @@ async function refresh() {
       return;
     }
     list.innerHTML = blocks.map(b => `
-      <div class="block-card">
+      <div class="block-card" onclick="showBlockDetail(${b.height})">
         <div>
           <div class="height"># ${b.height}</div>
           <div class="hash">${b.hash ? b.hash.substring(0,32) + '...' : 'genesis'}</div>
