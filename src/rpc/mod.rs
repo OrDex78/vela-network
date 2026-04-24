@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, RwLock};
 use tracing::info;
 use crate::types::{Address, Block, Transaction};
+use crate::storage::state::WorldState;
 
 #[derive(Clone)]
 pub struct NodeState {
@@ -18,6 +19,7 @@ pub struct NodeState {
     pub blocks: Arc<RwLock<Vec<Block>>>,
     pub mempool: Arc<RwLock<Vec<Transaction>>>,
     pub tx_broadcast: mpsc::Sender<Transaction>,
+    pub world_state: Arc<RwLock<WorldState>>,
 }
 
 impl NodeState {
@@ -28,6 +30,7 @@ impl NodeState {
             blocks: Arc::new(RwLock::new(vec![Block::genesis()])),
             mempool: Arc::new(RwLock::new(vec![])),
             tx_broadcast,
+            world_state: Arc::new(RwLock::new(WorldState::new())),
         }
     }
 }
@@ -112,13 +115,24 @@ async fn get_block(
 }
 
 async fn get_balance(
-    State(_state): State<NodeState>,
+    State(state): State<NodeState>,
     Path(address): Path<String>,
 ) -> Json<serde_json::Value> {
+    let addr_hex = address.trim_start_matches("vela:");
+    let ws = state.world_state.read().await;
+    let mut addr_arr = [0u8; 32];
+    if let Ok(bytes) = hex::decode(addr_hex) {
+        if bytes.len() == 32 {
+            addr_arr.copy_from_slice(&bytes);
+        }
+    }
+    let addr = Address(addr_arr);
+    let balance = ws.balance(&addr);
+    let nonce = ws.nonce(&addr);
     Json(serde_json::json!({
         "address": address,
-        "balance": 0,
-        "nonce": 0
+        "balance": balance,
+        "nonce": nonce
     }))
 }
 

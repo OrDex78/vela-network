@@ -42,14 +42,11 @@ async fn main() -> Result<()> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
-    // ── Channels ──────────────────────────────────────────────────────────────
     let (tx_in, mut rx_in) = mpsc::channel::<NetworkMessage>(256);
     let (tx_broadcast, mut rx_broadcast) = mpsc::channel::<Transaction>(256);
 
-    // ── Shared state ──────────────────────────────────────────────────────────
     let node_state = NodeState::new(args.port, tx_broadcast);
 
-    // ── P2P node ──────────────────────────────────────────────────────────────
     let node = P2PNode::new(args.port, bootstrap_peers, tx_in)?;
     let tx_out = node.tx_out.clone();
 
@@ -59,7 +56,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── Incoming P2P messages ─────────────────────────────────────────────────
     let state_p2p = node_state.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx_in.recv().await {
@@ -69,6 +65,7 @@ async fn main() -> Result<()> {
                     let mut blocks = state_p2p.blocks.write().await;
                     let tip = blocks.last().map(|b| b.header.height).unwrap_or(0);
                     if block.header.height == tip + 1 {
+                        state_p2p.world_state.write().await.apply_block(&block).ok();
                         blocks.push(block);
                         info!("✅ Block committed, chain height: {}", tip + 1);
                     }
@@ -81,7 +78,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── Broadcast txs from RPC to network ────────────────────────────────────
     let tx_out_tx = tx_out.clone();
     tokio::spawn(async move {
         while let Some(tx) = rx_broadcast.recv().await {
@@ -89,7 +85,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── Block production (every 10s, propose a block) ────────────────────────
     let state_prod = node_state.clone();
     let tx_out_prod = tx_out.clone();
     tokio::spawn(async move {
@@ -120,6 +115,7 @@ async fn main() -> Result<()> {
             };
 
             info!("⛏️  Producing block #{} with {} txs", height, block.transactions.len());
+            state_prod.world_state.write().await.apply_block(&block).ok();
             blocks.push(block.clone());
             drop(blocks);
             drop(mempool);
@@ -129,7 +125,6 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── RPC server ────────────────────────────────────────────────────────────
     let state_rpc = node_state.clone();
     tokio::spawn(async move {
         start_rpc(state_rpc, rpc_port).await;
