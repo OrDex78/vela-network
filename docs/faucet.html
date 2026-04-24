@@ -117,16 +117,8 @@ async function requestTokens() {
 
   try {
     const nonce = Date.now();
-    const resp = await fetch(RPC + '/send_tx', {
+    const resp = await fetch(RPC + '/faucet/' + address, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: FAUCET_ADDR,
-        to: address,
-        amount: 100,
-        fee: 1,
-        nonce: nonce
-      })
     }).then(r => r.json());
 
     if (resp.tx_hash) {

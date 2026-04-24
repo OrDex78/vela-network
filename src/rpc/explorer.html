@@ -10,11 +10,14 @@
   header { background: #0d1117; border-bottom: 1px solid #1e3a5f; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
   header h1 { font-size: 1.4rem; color: #38bdf8; letter-spacing: 2px; }
   header span { background: #0ea5e9; color: #000; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px 40px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 24px 40px 0; }
+  .stats2 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 16px 40px 0; }
   .stat { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 20px; }
   .stat .label { color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
   .stat .value { color: #38bdf8; font-size: 1.8rem; font-weight: bold; margin-top: 8px; }
-  .section { padding: 0 40px 40px; }
+  .stat .value.green { color: #22c55e; }
+  .stat .value.small { font-size: 1rem; padding-top: 8px; }
+  .section { padding: 24px 40px 40px; }
   .section h2 { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; }
   .block-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px 20px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.2s; cursor: pointer; }
   .block-card:hover { border-color: #38bdf8; }
@@ -36,13 +39,8 @@
   .detail-row { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.8rem; }
   .detail-row .key { color: #64748b; min-width: 120px; }
   .detail-row .val { color: #e2e8f0; word-break: break-all; }
-  .tx-card { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.75rem; }
-  .tx-card .tx-hash { color: #38bdf8; margin-bottom: 8px; }
-  .tx-card .tx-row { display: flex; gap: 8px; margin-bottom: 4px; }
-  .tx-card .tx-key { color: #64748b; min-width: 60px; }
-  .tx-card .tx-val { color: #e2e8f0; word-break: break-all; }
   .empty-txs { color: #475569; text-align: center; padding: 20px; font-size: 0.8rem; }
-  .nav-links { display: flex; gap: 12px; padding: 0 40px 16px; }
+  .nav-links { display: flex; gap: 12px; padding: 16px 40px; }
   .nav-links a { color: #38bdf8; font-size: 0.8rem; text-decoration: none; border: 1px solid #1e3a5f; padding: 6px 16px; border-radius: 6px; }
   .nav-links a:hover { border-color: #38bdf8; }
   .search-bar { display: flex; gap: 8px; padding: 0 40px 24px; }
@@ -54,6 +52,15 @@
   .addr-card .addr-title { color: #64748b; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 8px; }
   .addr-card .addr-val { color: #38bdf8; word-break: break-all; font-size: 0.8rem; margin-bottom: 12px; }
   .addr-card .balance { color: #22c55e; font-size: 1.4rem; font-weight: bold; }
+  .validator-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .validator-card.leader { border-color: #22c55e; }
+  .validator-card .v-addr { color: #64748b; font-size: 0.7rem; margin-top: 4px; }
+  .leader-badge { background: #22c55e20; color: #22c55e; border: 1px solid #22c55e40; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; }
+  .tx-card { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; font-size: 0.75rem; }
+  .tx-card .tx-hash { color: #38bdf8; margin-bottom: 8px; }
+  .tx-card .tx-row { display: flex; gap: 8px; margin-bottom: 4px; }
+  .tx-card .tx-key { color: #64748b; min-width: 60px; }
+  .tx-card .tx-val { color: #e2e8f0; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -65,9 +72,16 @@
 
 <div class="stats">
   <div class="stat"><div class="label">Block Height</div><div class="value" id="block-height">—</div></div>
-  <div class="stat"><div class="label">Peers</div><div class="value" id="peer-count">—</div></div>
+  <div class="stat"><div class="label">Total Transactions</div><div class="value" id="total-txs">—</div></div>
+  <div class="stat"><div class="label">Total Supply</div><div class="value small" id="total-supply">—</div></div>
   <div class="stat"><div class="label">Mempool</div><div class="value" id="mempool-size">—</div></div>
-  <div class="stat"><div class="label">Version</div><div class="value" style="font-size:1rem;padding-top:8px" id="version">—</div></div>
+</div>
+
+<div class="stats2">
+  <div class="stat"><div class="label">Peers</div><div class="value" id="peer-count">—</div></div>
+  <div class="stat"><div class="label">Current Leader</div><div class="value" id="current-leader">—</div></div>
+  <div class="stat"><div class="label">Version</div><div class="value small" id="version">—</div></div>
+  <div class="stat"><div class="label">Network</div><div class="value small green">Testnet</div></div>
 </div>
 
 <div class="nav-links">
@@ -93,6 +107,11 @@
 </div>
 
 <div class="section">
+  <h2>Validators</h2>
+  <div id="validators-list"><div class="loading">Loading validators...</div></div>
+</div>
+
+<div class="section">
   <h2>Latest Blocks</h2>
   <div id="blocks-list"><div class="loading">Loading blocks...</div></div>
 </div>
@@ -114,6 +133,7 @@ async function fetchStatus() { return fetch(BASE+'/status').then(r=>r.json()); }
 async function fetchBlock(h) { return fetch(BASE+'/block/'+h).then(r=>r.json()); }
 async function fetchBalance(a) { return fetch(BASE+'/balance/'+a).then(r=>r.json()); }
 async function fetchTxs(a) { return fetch(BASE+'/transactions/'+a).then(r=>r.json()); }
+async function fetchValidators() { return fetch(BASE+'/validators').then(r=>r.json()); }
 
 function timeAgo(ms) {
   const diff = Date.now() - ms;
@@ -122,36 +142,33 @@ function timeAgo(ms) {
   return Math.floor(diff/3600000)+'h ago';
 }
 
+function formatSupply(n) {
+  if (!n) return '—';
+  return (n / 1_000_000_000).toFixed(2) + 'B VELA';
+}
+
 async function searchAddress() {
   const addr = document.getElementById('search-input').value.trim();
   if (!addr) return;
-
-  const [balData, txData] = await Promise.all([
-    fetchBalance(addr),
-    fetchTxs(addr)
-  ]);
-
+  const [balData, txData] = await Promise.all([fetchBalance(addr), fetchTxs(addr)]);
   document.getElementById('search-addr').textContent = addr;
   document.getElementById('search-balance').textContent = balData.balance + ' VELA';
-
   const txs = txData.transactions || [];
   const txsEl = document.getElementById('search-txs');
-
   if (txs.length === 0) {
     txsEl.innerHTML = '<div class="empty-txs">No transactions found</div>';
   } else {
     txsEl.innerHTML = txs.reverse().map(tx => `
       <div class="tx-card">
         <div class="tx-hash">TX: ${tx.hash.substring(0,32)}...</div>
-        <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from.substring(0,20)}...</span></div>
-        <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to.substring(0,20)}...</span></div>
+        <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from.substring(0,24)}...</span></div>
+        <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to.substring(0,24)}...</span></div>
         <div class="tx-row"><span class="tx-key">Amount</span><span class="tx-val">${tx.amount} VELA</span></div>
         <div class="tx-row"><span class="tx-key">Block</span><span class="tx-val">#${tx.block}</span></div>
         <div class="tx-row"><span class="tx-key">Time</span><span class="tx-val">${timeAgo(tx.timestamp)}</span></div>
       </div>
     `).join('');
   }
-
   document.getElementById('search-results').style.display = 'block';
 }
 
@@ -164,7 +181,6 @@ async function showBlockDetail(height) {
     <div class="detail-row"><span class="key">Parent Hash</span><span class="val">${b.parent_hash}</span></div>
     <div class="detail-row"><span class="key">Transactions</span><span class="val">${b.tx_count}</span></div>
     <div class="detail-row"><span class="key">Timestamp</span><span class="val">${new Date(b.timestamp).toLocaleString()}</span></div>
-    <div class="detail-row"><span class="key">Proposer</span><span class="val">${b.proposer}</span></div>
     <div class="detail-row"><span class="key">Round</span><span class="val">${b.round}</span></div>
   `;
   document.getElementById('block-modal').classList.add('open');
@@ -178,6 +194,25 @@ document.getElementById('search-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') searchAddress();
 });
 
+async function loadValidators() {
+  try {
+    const data = await fetchValidators();
+    const list = document.getElementById('validators-list');
+    list.innerHTML = data.validators.map(v => `
+      <div class="validator-card ${v.is_leader ? 'leader' : ''}">
+        <div>
+          <div style="color:#38bdf8;font-weight:bold">Validator #${v.index}</div>
+          <div class="v-addr">${v.address.substring(0,40)}...</div>
+        </div>
+        <div style="text-align:right">
+          ${v.is_leader ? '<span class="leader-badge">⚡ LEADER</span>' : '<span style="color:#475569;font-size:0.75rem">Standby</span>'}
+          <div style="color:#64748b;font-size:0.7rem;margin-top:4px">Stake: ${v.stake} VELA</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
 async function refresh() {
   try {
     const status = await fetchStatus();
@@ -185,6 +220,9 @@ async function refresh() {
     document.getElementById('peer-count').textContent = status.peer_count;
     document.getElementById('mempool-size').textContent = status.mempool_size;
     document.getElementById('version').textContent = 'v' + status.version;
+    document.getElementById('total-txs').textContent = status.total_txs || 0;
+    document.getElementById('total-supply').textContent = formatSupply(status.total_supply);
+    document.getElementById('current-leader').textContent = 'Validator ' + status.current_leader;
 
     const height = status.block_height;
     const start = Math.max(0, height - 9);
@@ -215,8 +253,10 @@ async function refresh() {
   }
 }
 
+loadValidators();
 refresh();
 setInterval(refresh, 3000);
+setInterval(loadValidators, 10000);
 </script>
 </body>
 </html>
