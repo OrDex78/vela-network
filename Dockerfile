@@ -11,4 +11,4 @@ COPY --from=builder /app/src/rpc/explorer.html src/rpc/explorer.html
 RUN mkdir -p /data
 VOLUME ["/data"]
 EXPOSE 8001 9001
-CMD ["./vela-node", "--port", "8001", "--db-path", "/data/vela-db"]
+CMD ["./vela-node", "--port", "8001"]
