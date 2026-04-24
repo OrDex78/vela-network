@@ -153,6 +153,36 @@ async fn get_balance(
     }))
 }
 
+async fn get_transactions(
+    State(state): State<NodeState>,
+    Path(address): Path<String>,
+) -> Json<serde_json::Value> {
+    let addr_hex = address.trim_start_matches("vela:").to_string();
+    let blocks = state.blocks.read().await;
+    let mut txs = vec![];
+
+    for block in blocks.iter() {
+        for tx in &block.transactions {
+            let from_hex = hex::encode(tx.from.as_bytes());
+            let to_hex = hex::encode(tx.to.as_bytes());
+            if from_hex == addr_hex || to_hex == addr_hex {
+                txs.push(serde_json::json!({
+                    "hash": tx.hash().to_hex(),
+                    "from": format!("vela:{}", from_hex),
+                    "to": format!("vela:{}", to_hex),
+                    "amount": tx.amount,
+                    "fee": tx.fee,
+                    "nonce": tx.nonce,
+                    "block": block.header.height,
+                    "timestamp": block.header.timestamp,
+                }));
+            }
+        }
+    }
+
+    Json(serde_json::json!({ "address": address, "transactions": txs }))
+}
+
 async fn post_send_tx(
     State(state): State<NodeState>,
     Json(req): Json<SendTxRequest>,
@@ -207,6 +237,7 @@ pub fn make_router(state: NodeState) -> Router {
         .route("/status", get(get_status))
         .route("/block/{height}", get(get_block))
         .route("/balance/{address}", get(get_balance))
+        .route("/transactions/{address}", get(get_transactions))
         .route("/send_tx", post(post_send_tx))
         .with_state(state)
 }

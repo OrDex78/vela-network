@@ -26,8 +26,6 @@
   #status-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .loading { color: #475569; text-align: center; padding: 40px; }
-
-  /* Modal */
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000000cc; z-index: 100; overflow-y: auto; }
   .modal.open { display: block; }
   .modal-content { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 12px; max-width: 700px; margin: 60px auto; padding: 32px; }
@@ -47,6 +45,15 @@
   .nav-links { display: flex; gap: 12px; padding: 0 40px 16px; }
   .nav-links a { color: #38bdf8; font-size: 0.8rem; text-decoration: none; border: 1px solid #1e3a5f; padding: 6px 16px; border-radius: 6px; }
   .nav-links a:hover { border-color: #38bdf8; }
+  .search-bar { display: flex; gap: 8px; padding: 0 40px 24px; }
+  .search-bar input { flex: 1; background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 0.8rem; }
+  .search-bar input:focus { outline: none; border-color: #38bdf8; }
+  .search-bar button { background: #0ea5e9; color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; }
+  .search-bar button:hover { background: #38bdf8; }
+  .addr-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .addr-card .addr-title { color: #64748b; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 8px; }
+  .addr-card .addr-val { color: #38bdf8; word-break: break-all; font-size: 0.8rem; margin-bottom: 12px; }
+  .addr-card .balance { color: #22c55e; font-size: 1.4rem; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -67,12 +74,29 @@
   <a href="/wallet">💰 Wallet</a>
 </div>
 
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="Search by address (vela:...)">
+  <button onclick="searchAddress()">Search</button>
+</div>
+
+<div id="search-results" style="padding: 0 40px 24px; display:none">
+  <div class="addr-card">
+    <div class="addr-title">Address</div>
+    <div class="addr-val" id="search-addr">—</div>
+    <div class="addr-title">Balance</div>
+    <div class="balance" id="search-balance">—</div>
+  </div>
+  <div class="section" style="padding:0">
+    <h2 style="margin-bottom:12px">Transactions</h2>
+    <div id="search-txs"></div>
+  </div>
+</div>
+
 <div class="section">
   <h2>Latest Blocks</h2>
   <div id="blocks-list"><div class="loading">Loading blocks...</div></div>
 </div>
 
-<!-- Block detail modal -->
 <div class="modal" id="block-modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -86,36 +110,54 @@
 <script>
 const BASE = '';
 
-async function fetchStatus() {
-  const r = await fetch(BASE + '/status');
-  return r.json();
-}
-
-async function fetchBlock(h) {
-  const r = await fetch(BASE + '/block/' + h);
-  return r.json();
-}
+async function fetchStatus() { return fetch(BASE+'/status').then(r=>r.json()); }
+async function fetchBlock(h) { return fetch(BASE+'/block/'+h).then(r=>r.json()); }
+async function fetchBalance(a) { return fetch(BASE+'/balance/'+a).then(r=>r.json()); }
+async function fetchTxs(a) { return fetch(BASE+'/transactions/'+a).then(r=>r.json()); }
 
 function timeAgo(ms) {
   const diff = Date.now() - ms;
-  if (diff < 60000) return Math.floor(diff/1000) + 's ago';
-  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
-  return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 60000) return Math.floor(diff/1000)+'s ago';
+  if (diff < 3600000) return Math.floor(diff/60000)+'m ago';
+  return Math.floor(diff/3600000)+'h ago';
+}
+
+async function searchAddress() {
+  const addr = document.getElementById('search-input').value.trim();
+  if (!addr) return;
+
+  const [balData, txData] = await Promise.all([
+    fetchBalance(addr),
+    fetchTxs(addr)
+  ]);
+
+  document.getElementById('search-addr').textContent = addr;
+  document.getElementById('search-balance').textContent = balData.balance + ' VELA';
+
+  const txs = txData.transactions || [];
+  const txsEl = document.getElementById('search-txs');
+
+  if (txs.length === 0) {
+    txsEl.innerHTML = '<div class="empty-txs">No transactions found</div>';
+  } else {
+    txsEl.innerHTML = txs.reverse().map(tx => `
+      <div class="tx-card">
+        <div class="tx-hash">TX: ${tx.hash.substring(0,32)}...</div>
+        <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from.substring(0,20)}...</span></div>
+        <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to.substring(0,20)}...</span></div>
+        <div class="tx-row"><span class="tx-key">Amount</span><span class="tx-val">${tx.amount} VELA</span></div>
+        <div class="tx-row"><span class="tx-key">Block</span><span class="tx-val">#${tx.block}</span></div>
+        <div class="tx-row"><span class="tx-key">Time</span><span class="tx-val">${timeAgo(tx.timestamp)}</span></div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('search-results').style.display = 'block';
 }
 
 async function showBlockDetail(height) {
   const b = await fetchBlock(height);
   document.getElementById('modal-title').textContent = `Block #${b.height}`;
-  
-  let txHtml = '';
-  if (b.tx_count === 0) {
-    txHtml = '<div class="empty-txs">No transactions in this block</div>';
-  } else {
-    txHtml = '<div style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px">Transactions</div>';
-    // We don't have full tx data from block endpoint yet, show count
-    txHtml += `<div class="empty-txs">${b.tx_count} transaction(s) — full tx details coming soon</div>`;
-  }
-
   document.getElementById('modal-body').innerHTML = `
     <div class="detail-row"><span class="key">Height</span><span class="val">${b.height}</span></div>
     <div class="detail-row"><span class="key">Hash</span><span class="val">${b.hash}</span></div>
@@ -124,7 +166,6 @@ async function showBlockDetail(height) {
     <div class="detail-row"><span class="key">Timestamp</span><span class="val">${new Date(b.timestamp).toLocaleString()}</span></div>
     <div class="detail-row"><span class="key">Proposer</span><span class="val">${b.proposer}</span></div>
     <div class="detail-row"><span class="key">Round</span><span class="val">${b.round}</span></div>
-    ${txHtml}
   `;
   document.getElementById('block-modal').classList.add('open');
 }
@@ -132,6 +173,10 @@ async function showBlockDetail(height) {
 function closeModal() {
   document.getElementById('block-modal').classList.remove('open');
 }
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchAddress();
+});
 
 async function refresh() {
   try {
@@ -157,7 +202,7 @@ async function refresh() {
       <div class="block-card" onclick="showBlockDetail(${b.height})">
         <div>
           <div class="height"># ${b.height}</div>
-          <div class="hash">${b.hash ? b.hash.substring(0,32) + '...' : 'genesis'}</div>
+          <div class="hash">${b.hash ? b.hash.substring(0,32)+'...' : 'genesis'}</div>
         </div>
         <div class="right">
           <div class="txcount">${b.tx_count} txs</div>

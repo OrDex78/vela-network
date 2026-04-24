@@ -27,14 +27,14 @@ input:focus { outline: none; border-color: #38bdf8; }
 .status { padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; margin-top: 8px; display: none; }
 .status.success { background: #0ea5e920; border: 1px solid #0ea5e940; color: #0ea5e9; display: block; }
 .status.error { background: #ef444420; border: 1px solid #ef444440; color: #ef4444; display: block; }
-.nav { display: flex; gap: 8px; margin-bottom: 20px; }
+.nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .nav button { width: auto; flex: 1; }
 .section { display: none; }
 .section.active { display: block; }
 #dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 .node-info { font-size: 0.75rem; color: #64748b; }
-.tx-hash { font-size: 0.7rem; color: #38bdf8; word-break: break-all; margin-top: 8px; }
+.tx-item { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; margin-bottom: 8px; font-size: 0.75rem; }
 </style>
 </head>
 <body>
@@ -47,7 +47,6 @@ input:focus { outline: none; border-color: #38bdf8; }
 
 <div class="container">
 
-  <!-- No wallet -->
   <div id="no-wallet">
     <div class="card">
       <h2>Welcome to Vela Network</h2>
@@ -62,7 +61,6 @@ input:focus { outline: none; border-color: #38bdf8; }
     </div>
   </div>
 
-  <!-- Wallet UI -->
   <div id="wallet-ui" style="display:none">
     <div class="card">
       <h2>Your Address</h2>
@@ -76,6 +74,7 @@ input:focus { outline: none; border-color: #38bdf8; }
     <div class="nav">
       <button onclick="showSection('send')" class="secondary">💸 Send</button>
       <button onclick="showSection('receive')" class="secondary">📥 Receive</button>
+      <button onclick="showSection('history')" class="secondary">📜 History</button>
       <button onclick="showSection('keys')" class="secondary">🔑 Keys</button>
     </div>
 
@@ -84,7 +83,7 @@ input:focus { outline: none; border-color: #38bdf8; }
         <h2>Send VELA</h2>
         <input type="text" id="to-address" placeholder="Recipient address (vela:...)">
         <input type="number" id="amount" placeholder="Amount (VELA)">
-        <input type="number" id="nonce" placeholder="Nonce (use 1 for first tx)" value="1">
+        <input type="number" id="nonce" placeholder="Nonce" value="1">
         <button onclick="sendTx()">Send Transaction</button>
         <div id="send-status" class="status"></div>
       </div>
@@ -96,6 +95,13 @@ input:focus { outline: none; border-color: #38bdf8; }
         <p style="color:#64748b;font-size:0.8rem;margin-bottom:12px">Share your address to receive VELA tokens:</p>
         <div class="address-box" id="receive-address">—</div>
         <button onclick="copyAddress()">Copy Address</button>
+      </div>
+    </div>
+
+    <div id="history" class="section">
+      <div class="card">
+        <h2>Transaction History</h2>
+        <div id="tx-list"><div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">Click to load...</div></div>
       </div>
     </div>
 
@@ -113,9 +119,6 @@ input:focus { outline: none; border-color: #38bdf8; }
 
 <script>
 const RPC = 'https://vela-network-production.up.railway.app';
-
-// ── Crypto (Ed25519 via noble) ─────────────────────────────────────────────
-// We use tweetnacl for Ed25519 in browser
 const NACL_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js';
 
 function loadScript(src) {
@@ -149,7 +152,6 @@ async function generateWallet() {
 function importWallet() {
   const privHex = document.getElementById('import-key').value.trim();
   if (privHex.length !== 64) { alert('Invalid key — must be 64 hex chars'); return; }
-  // derive pubkey from privkey using nacl
   ensureNacl().then(() => {
     const kp = nacl.sign.keyPair.fromSeed(hexToBytes(privHex));
     const pubHex = bytesToHex(kp.publicKey);
@@ -219,7 +221,6 @@ async function sendTx() {
 
   if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
 
-  // Sign the transaction
   const fee = 1;
   const kp = nacl.sign.keyPair.fromSeed(hexToBytes(w.priv));
   const msgParts = [
@@ -239,6 +240,7 @@ async function sendTx() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: w.address, to, amount, fee, nonce, signature: sigHex })
     }).then(r => r.json());
+
     if (resp.tx_hash) {
       showStatus(status, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
       document.getElementById('nonce').value = nonce + 1;
@@ -250,6 +252,32 @@ async function sendTx() {
   }
 }
 
+async function loadHistory() {
+  const w = loadWallet();
+  const txList = document.getElementById('tx-list');
+  txList.innerHTML = '<div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">Loading...</div>';
+  try {
+    const data = await fetch(RPC + '/transactions/' + w.address).then(r => r.json());
+    const txs = data.transactions || [];
+    if (txs.length === 0) {
+      txList.innerHTML = '<div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">No transactions yet</div>';
+      return;
+    }
+    txList.innerHTML = txs.reverse().map(tx => {
+      const isSent = tx.from === w.address;
+      return `
+        <div class="tx-item">
+          <div style="color:${isSent ? '#ef4444' : '#22c55e'};margin-bottom:6px;font-weight:bold">${isSent ? '↑ Sent' : '↓ Received'} ${tx.amount} VELA</div>
+          <div style="color:#64748b">${isSent ? 'To: '+tx.to.substring(0,30)+'...' : 'From: '+tx.from.substring(0,30)+'...'}</div>
+          <div style="color:#475569;margin-top:4px">Block #${tx.block} · ${new Date(tx.timestamp).toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    txList.innerHTML = '<div style="color:#ef4444;font-size:0.8rem;text-align:center;padding:20px">Cannot connect to node</div>';
+  }
+}
+
 function showStatus(el, msg, type) {
   el.textContent = msg;
   el.className = 'status ' + type;
@@ -258,6 +286,7 @@ function showStatus(el, msg, type) {
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if (id === 'history') loadHistory();
 }
 
 function copyAddress() {
@@ -271,7 +300,6 @@ function togglePrivkey() {
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-// Init
 window.onload = () => {
   const w = loadWallet();
   if (w.address) showWallet();
