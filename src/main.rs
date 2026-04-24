@@ -22,6 +22,12 @@ use storage::db::BlockDb;
 use storage::state::WorldState;
 use types::{Address, Block, BlockHeader, Hash, Transaction, Validator, Vote};
 
+/// Public testnet bootstrap peers
+const BOOTSTRAP_PEERS: &[&str] = &[
+    // Add public node addresses here when deployed
+    // e.g. "/ip4/1.2.3.4/tcp/8001"
+];
+
 #[derive(Parser, Debug)]
 #[command(name = "vela-node", about = "Vela Network Node")]
 struct Args {
@@ -47,11 +53,18 @@ async fn main() -> Result<()> {
     info!("RPC API on port {}", rpc_port);
     info!("Validator index: {}", args.validator_index);
 
-    let bootstrap_peers: Vec<Multiaddr> = args
+    let mut bootstrap_peers: Vec<Multiaddr> = args
         .bootstrap
         .iter()
         .filter_map(|s| s.parse().ok())
         .collect();
+
+    // Add hardcoded bootstrap peers
+    for peer in BOOTSTRAP_PEERS {
+        if let Ok(addr) = peer.parse() {
+            bootstrap_peers.push(addr);
+        }
+    }
 
     // ── Validator keypairs (deterministic from index for testnet) ─────────────
     // In production these would be loaded from disk
@@ -174,8 +187,45 @@ async fn main() -> Result<()> {
                         tx_out_p2p.send(NetworkMessage::ConsensusVote(vote)).await.ok();
                     }
                 }
+                NetworkMessage::SyncRequest { from_height } => {
+                    info!("🔄 Received SyncRequest from height {}", from_height);
+                    let blocks = state_p2p.blocks.read().await;
+                    let sync_blocks: Vec<Block> = blocks
+                        .iter()
+                        .filter(|b| b.header.height > from_height)
+                        .cloned()
+                        .collect();
+                    if !sync_blocks.is_empty() {
+                        info!("🔄 Sending {} blocks in SyncResponse", sync_blocks.len());
+                        tx_out_p2p.send(NetworkMessage::SyncResponse { blocks: sync_blocks }).await.ok();
+                    }
+                }
+                NetworkMessage::SyncResponse { blocks: sync_blocks } => {
+                    info!("🔄 Received SyncResponse with {} blocks", sync_blocks.len());
+                    let mut chain = state_p2p.blocks.write().await;
+                    for block in sync_blocks {
+                        let tip = chain.last().map(|b| b.header.height).unwrap_or(0);
+                        if block.header.height == tip + 1 {
+                            state_p2p.world_state.write().await.apply_block(&block).ok();
+                            db_p2p.save_block(&block).ok();
+                            chain.push(block.clone());
+                            info!("✅ Synced block #{}", block.header.height);
+                        }
+                    }
+                }
             }
         }
+    });
+
+    // ── Startup chain sync ────────────────────────────────────────────────────
+    let state_sync = node_state.clone();
+    let tx_out_sync = tx_out.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        let current_height = state_sync.blocks.read().await
+            .last().map(|b| b.header.height).unwrap_or(0);
+        info!("🔄 Requesting chain sync from height {}", current_height);
+        tx_out_sync.send(NetworkMessage::SyncRequest { from_height: current_height }).await.ok();
     });
 
     // ── Broadcast txs from RPC to network ────────────────────────────────────

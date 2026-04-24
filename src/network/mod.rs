@@ -27,6 +27,8 @@ pub enum NetworkMessage {
     NewTransaction(Transaction),
     ConsensusVote(Vote),
     ConsensusPropose(Block),
+    SyncRequest { from_height: u64 },
+    SyncResponse { blocks: Vec<Block> },
 }
 
 #[derive(NetworkBehaviour)]
@@ -134,6 +136,8 @@ impl P2PNode {
                         NetworkMessage::NewTransaction(_) => (&topic_txs, serde_json::to_vec(&msg)?),
                         NetworkMessage::ConsensusVote(_) => (&topic_consensus, serde_json::to_vec(&msg)?),
                         NetworkMessage::ConsensusPropose(_) => (&topic_consensus, serde_json::to_vec(&msg)?),
+                        NetworkMessage::SyncRequest { .. } => (&topic_blocks, serde_json::to_vec(&msg)?),
+                        NetworkMessage::SyncResponse { .. } => (&topic_blocks, serde_json::to_vec(&msg)?),
                     };
                     if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), data) {
                         warn!("Gossipsub publish: {e}");

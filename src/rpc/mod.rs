@@ -264,7 +264,23 @@ async fn post_send_tx(
     let mut to_arr = [0u8; 32];
     from_arr.copy_from_slice(&from_bytes);
     to_arr.copy_from_slice(&to_bytes);
-    let mut tx = Transaction::new(Address(from_arr), Address(to_arr), req.amount, req.fee, req.nonce);
+    let from_addr = Address(from_arr);
+    {
+        let ws = state.world_state.read().await;
+        let balance = ws.balance(&from_addr);
+        let expected_nonce = ws.nonce(&from_addr) + 1;
+        if balance < req.amount + req.fee {
+            return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse {
+                error: format!("insufficient balance: have {}, need {}", balance, req.amount + req.fee)
+            })));
+        }
+        if req.nonce != expected_nonce {
+            return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse {
+                error: format!("invalid nonce: expected {}, got {}", expected_nonce, req.nonce)
+            })));
+        }
+    }
+    let mut tx = Transaction::new(from_addr, Address(to_arr), req.amount, req.fee, req.nonce);
     if let Some(sig_hex) = req.signature {
         if let Ok(sig_bytes) = hex::decode(&sig_hex) {
             tx.signature = Some(sig_bytes);
@@ -274,6 +290,12 @@ async fn post_send_tx(
         return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "invalid signature".into() })));
     }
     let tx_hash = tx.hash().to_hex();
+    {
+        let mempool = state.mempool.read().await;
+        if mempool.iter().any(|t| t.hash().to_hex() == tx_hash) {
+            return Err((StatusCode::BAD_REQUEST, Json(ErrorResponse { error: "tx already in mempool".into() })));
+        }
+    }
     state.mempool.write().await.push(tx.clone());
     info!("💸 TX added to mempool: {}", &tx_hash[..16]);
     state.tx_broadcast.send(tx).await.ok();
