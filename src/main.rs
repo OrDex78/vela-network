@@ -10,7 +10,7 @@ use anyhow::Result;
 use clap::Parser;
 use libp2p::Multiaddr;
 use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::mpsc;
 use tracing::info;
 
 use network::{NetworkMessage, P2PNode};
@@ -45,7 +45,6 @@ async fn main() -> Result<()> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
-    // ── Persistent storage ────────────────────────────────────────────────────
     let db_path = format!("vela-db-{}", args.port);
     let block_db = Arc::new(BlockDb::open(&db_path)?);
 
@@ -102,6 +101,8 @@ async fn main() -> Result<()> {
                     info!("💸 Received tx from network");
                     state_p2p.mempool.write().await.push(tx);
                 }
+                NetworkMessage::ConsensusVote(_) => {}
+                NetworkMessage::ConsensusPropose(_) => {}
             }
         }
     });

@@ -1,4 +1,3 @@
- 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
@@ -16,15 +15,18 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
-use crate::types::{Block, Transaction};
+use crate::types::{Block, Transaction, Vote};
 
 pub const TOPIC_BLOCKS: &str = "vela-blocks";
 pub const TOPIC_TXS: &str = "vela-transactions";
+pub const TOPIC_CONSENSUS: &str = "vela-consensus";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NetworkMessage {
     NewBlock(Block),
     NewTransaction(Transaction),
+    ConsensusVote(Vote),
+    ConsensusPropose(Block),
 }
 
 #[derive(NetworkBehaviour)]
@@ -105,8 +107,10 @@ impl P2PNode {
 
         let topic_blocks = IdentTopic::new(TOPIC_BLOCKS);
         let topic_txs = IdentTopic::new(TOPIC_TXS);
+        let topic_consensus = IdentTopic::new(TOPIC_CONSENSUS);
         swarm.behaviour_mut().gossipsub.subscribe(&topic_blocks)?;
         swarm.behaviour_mut().gossipsub.subscribe(&topic_txs)?;
+        swarm.behaviour_mut().gossipsub.subscribe(&topic_consensus)?;
 
         let listen_addr: Multiaddr = format!("/ip4/0.0.0.0/tcp/{}", self.port)
             .parse()
@@ -128,6 +132,8 @@ impl P2PNode {
                     let (topic, data) = match &msg {
                         NetworkMessage::NewBlock(_) => (&topic_blocks, serde_json::to_vec(&msg)?),
                         NetworkMessage::NewTransaction(_) => (&topic_txs, serde_json::to_vec(&msg)?),
+                        NetworkMessage::ConsensusVote(_) => (&topic_consensus, serde_json::to_vec(&msg)?),
+                        NetworkMessage::ConsensusPropose(_) => (&topic_consensus, serde_json::to_vec(&msg)?),
                     };
                     if let Err(e) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), data) {
                         warn!("Gossipsub publish: {e}");
@@ -160,7 +166,6 @@ impl P2PNode {
                         )) => {
                             match serde_json::from_slice::<NetworkMessage>(&message.data) {
                                 Ok(msg) => {
-                                    info!("Received: {:?}", msg);
                                     if let Err(e) = self.tx_in.send(msg).await {
                                         error!("Failed to forward message: {e}");
                                     }
