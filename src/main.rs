@@ -31,15 +31,18 @@ const BOOTSTRAP_PEERS: &[&str] = &[
 #[derive(Parser, Debug)]
 #[command(name = "vela-node", about = "Vela Network Node")]
 struct Args {
-    #[arg(long, default_value = "8001")]
-    port: u16,
+    #[arg(long)]
+    port: Option<u16>,
+
+    #[arg(long)]
+    http_port: Option<u16>,
 
     #[arg(long, value_delimiter = ',')]
     bootstrap: Vec<String>,
 
     /// Validator index (0, 1, or 2)
-    #[arg(long, default_value = "0")]
-    validator_index: usize,
+    #[arg(long)]
+    validator_index: Option<usize>,
 }
 
 #[tokio::main]
@@ -47,11 +50,22 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
 
     let args = Args::parse();
-    let rpc_port = args.port + 1000;
 
-    info!("Starting Vela node on port {}", args.port);
+    let port: u16 = args.port
+        .or_else(|| std::env::var("P2P_PORT").ok().and_then(|v| v.parse().ok()))
+        .unwrap_or(8001);
+
+    let rpc_port: u16 = args.http_port
+        .or_else(|| std::env::var("HTTP_PORT").ok().and_then(|v| v.parse().ok()))
+        .unwrap_or(port + 1000);
+
+    let validator_index: usize = args.validator_index
+        .or_else(|| std::env::var("VALIDATOR_INDEX").ok().and_then(|v| v.parse().ok()))
+        .unwrap_or(0);
+
+    info!("Starting Vela node on port {}", port);
     info!("RPC API on port {}", rpc_port);
-    info!("Validator index: {}", args.validator_index);
+    info!("Validator index: {}", validator_index);
 
     let mut bootstrap_peers: Vec<Multiaddr> = args
         .bootstrap
@@ -96,12 +110,12 @@ async fn main() -> Result<()> {
         }
     }).collect();
 
-    let my_key = validator_keys[args.validator_index].clone();
+    let my_key = validator_keys[validator_index].clone();
     let my_address = Address::from_pubkey(&my_key.verifying_key());
     info!("My validator address: {}", my_address);
 
     // ── Persistent storage ────────────────────────────────────────────────────
-    let db_path = format!("vela-db2-{}", args.port);
+    let db_path = format!("vela-db2-{}", port);
     let block_db = Arc::new(BlockDb::open(&db_path)?);
 
     let mut initial_blocks = block_db.load_all_blocks()?;
@@ -128,13 +142,13 @@ async fn main() -> Result<()> {
     let (tx_broadcast, mut rx_broadcast) = mpsc::channel::<Transaction>(256);
 
     let node_state = NodeState::new_with_state(
-        args.port,
+        port,
         tx_broadcast,
         initial_blocks,
         initial_world_state,
     );
 
-    let node = P2PNode::new(args.port, bootstrap_peers, tx_in)?;
+    let node = P2PNode::new(port, bootstrap_peers, tx_in)?;
     let tx_out = node.tx_out.clone();
 
     tokio::spawn(async move {
@@ -255,7 +269,6 @@ async fn main() -> Result<()> {
     let tx_out_prod = tx_out.clone();
     let db_prod = block_db.clone();
     let hotstuff_prod = hotstuff.clone();
-    let validator_index = args.validator_index;
     tokio::spawn(async move {
         let mut round = state_prod.blocks.read().await.last()
             .map(|b| b.header.round + 1).unwrap_or(1);

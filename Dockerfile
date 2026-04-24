@@ -15,4 +15,4 @@ ENV VALIDATOR_INDEX=0
 ENV BOOTSTRAP_ADDR=""
 
 EXPOSE ${P2P_PORT} ${HTTP_PORT}
-CMD ./vela-node --port ${P2P_PORT} --validator-index ${VALIDATOR_INDEX}
+CMD ./vela-node --validator-index ${VALIDATOR_INDEX:-0} --port ${P2P_PORT:-8001} --http-port ${HTTP_PORT:-9001}
