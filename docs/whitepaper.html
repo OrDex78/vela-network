@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vela Network — Whitepaper</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#c9d1d9;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
+
+/* ── Nav ─────────────────────────────────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.9);backdrop-filter:blur(12px);border-bottom:1px solid #1e3a5f}
+nav .inner{max-width:820px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+nav .logo{display:flex;align-items:center;gap:10px;font-size:1.1rem;font-weight:700;color:#38bdf8;letter-spacing:1.5px;text-decoration:none}
+nav .logo .hex{font-size:1.4rem}
+nav .badge{background:#0ea5e9;color:#000;padding:2px 10px;border-radius:20px;font-size:.6rem;font-weight:700;letter-spacing:1px}
+nav .links{display:flex;gap:20px}
+nav .links a{color:#94a3b8;text-decoration:none;font-size:.82rem;transition:color .2s}
+nav .links a:hover{color:#38bdf8}
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.container{max-width:760px;margin:0 auto;padding:100px 24px 80px}
+
+/* ── Title block ─────────────────────────────────────────────── */
+.title-block{text-align:center;margin-bottom:60px;padding-bottom:40px;border-bottom:1px solid #1e3a5f}
+.title-block h1{font-size:2.6rem;font-weight:800;letter-spacing:-1px;margin-bottom:12px;background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.title-block .subtitle{font-size:1.05rem;color:#64748b;margin-bottom:20px}
+.title-block .meta{font-size:.78rem;color:#475569}
+.title-block .meta span{margin:0 8px}
+
+/* ── TOC ─────────────────────────────────────────────────────── */
+.toc{background:#0d1117;border:1px solid #1e3a5f;border-radius:12px;padding:28px 32px;margin-bottom:48px}
+.toc h2{font-size:.8rem;text-transform:uppercase;letter-spacing:2px;color:#64748b;margin-bottom:14px}
+.toc ol{padding-left:20px}
+.toc li{margin-bottom:6px}
+.toc a{color:#38bdf8;text-decoration:none;font-size:.88rem}
+.toc a:hover{text-decoration:underline}
+
+/* ── Sections ────────────────────────────────────────────────── */
+section{margin-bottom:48px}
+section h2{font-size:1.5rem;font-weight:700;color:#f1f5f9;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e3a5f20}
+section h3{font-size:1.1rem;font-weight:600;color:#e2e8f0;margin:20px 0 8px}
+section p{margin-bottom:14px;font-size:.92rem;color:#94a3b8}
+section ul,section ol{padding-left:22px;margin-bottom:14px}
+section li{margin-bottom:6px;font-size:.9rem;color:#94a3b8}
+section li strong{color:#c9d1d9}
+
+/* ── Code / highlight boxes ──────────────────────────────────── */
+.highlight{background:#0d1117;border:1px solid #1e3a5f;border-radius:10px;padding:20px 24px;margin:16px 0 20px;font-size:.84rem;color:#c9d1d9;line-height:1.7}
+.highlight .label{font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:8px}
+
+/* ── Roadmap ─────────────────────────────────────────────────── */
+.roadmap{display:flex;flex-direction:column;gap:12px}
+.roadmap-item{display:flex;gap:16px;align-items:flex-start}
+.roadmap-dot{width:10px;height:10px;border-radius:50%;margin-top:7px;flex-shrink:0}
+.roadmap-dot.done{background:#22c55e}
+.roadmap-dot.active{background:#38bdf8;box-shadow:0 0 8px #38bdf860}
+.roadmap-dot.future{background:#334155}
+.roadmap-text{font-size:.88rem;color:#94a3b8}
+.roadmap-text strong{color:#e2e8f0}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+footer{border-top:1px solid #1e3a5f;padding:32px 24px;text-align:center}
+footer p{font-size:.78rem;color:#475569}
+footer a{color:#38bdf8;text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media(max-width:600px){
+  .title-block h1{font-size:1.8rem}
+  nav .links{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="inner">
+    <a href="/vela-network/" class="logo"><span class="hex">⬡</span> VELA <span class="badge">WHITEPAPER</span></a>
+    <div class="links">
+      <a href="/vela-network/">Home</a>
+      <a href="/vela-network/wallet.html">Wallet</a>
+      <a href="/vela-network/faucet.html">Faucet</a>
+      <a href="https://github.com/OrDex78/vela-network" target="_blank">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Title -->
+  <div class="title-block">
+    <h1>Vela Network Whitepaper</h1>
+    <p class="subtitle">A Custom Layer-1 Blockchain Built From Scratch in Rust</p>
+    <p class="meta">Author: Gaurav Sharma<span>·</span>Version 0.1<span>·</span>April 2025</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ol>
+      <li><a href="#abstract">Abstract</a></li>
+      <li><a href="#introduction">Introduction</a></li>
+      <li><a href="#consensus">Consensus — HotStuff BFT</a></li>
+      <li><a href="#network">Network Layer</a></li>
+      <li><a href="#cryptography">Cryptography</a></li>
+      <li><a href="#tokenomics">Tokenomics</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#conclusion">Conclusion</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. Abstract -->
+  <section id="abstract">
+    <h2>1. Abstract</h2>
+    <p>Vela Network is an independent Layer-1 blockchain designed and implemented entirely from scratch in Rust. It is not a fork of any existing chain. Every component — consensus, networking, transaction processing, state management, and cryptographic signing — has been purpose-built to understand and demonstrate the fundamental mechanics of a modern blockchain system.</p>
+    <p>The network uses HotStuff BFT for consensus, libp2p for peer-to-peer communication, Ed25519 for digital signatures, and Blake3 for hashing. It runs a live testnet with a block explorer, web wallet, and faucet.</p>
+  </section>
+
+  <!-- 2. Introduction -->
+  <section id="introduction">
+    <h2>2. Introduction</h2>
+    <p>Most blockchain projects start by forking an existing codebase — Geth, Substrate, Cosmos SDK — and customizing configuration. While practical, this approach obscures the underlying mechanics and limits deep understanding of the system.</p>
+    <p>Vela takes the opposite approach: build everything from first principles. The goals are:</p>
+    <ul>
+      <li><strong>Educational transparency</strong> — every line of code is written to be understood, not inherited.</li>
+      <li><strong>Minimal dependencies</strong> — rely only on well-audited cryptographic and networking libraries.</li>
+      <li><strong>Production-grade architecture</strong> — despite being educational, the system uses real BFT consensus, persistent storage, and proper transaction validation.</li>
+    </ul>
+    <p>Vela is written in Rust for its memory safety guarantees, zero-cost abstractions, and excellent async runtime support via Tokio.</p>
+  </section>
+
+  <!-- 3. Consensus -->
+  <section id="consensus">
+    <h2>3. Consensus — HotStuff BFT</h2>
+    <p>Vela implements the HotStuff Byzantine Fault Tolerant consensus protocol, originally published by Yin et al. (2019). HotStuff provides several advantages over classical BFT protocols like PBFT:</p>
+
+    <h3>3.1 Why HotStuff?</h3>
+    <ul>
+      <li><strong>Linear message complexity</strong> — each phase requires only O(n) messages, compared to O(n²) in PBFT.</li>
+      <li><strong>Pipelined rounds</strong> — proposals, votes, and commits are overlapped across rounds for higher throughput.</li>
+      <li><strong>Deterministic finality</strong> — once a block is committed, it is final. No probabilistic confirmation.</li>
+      <li><strong>Leader rotation</strong> — a round-robin leader schedule ensures fairness among validators.</li>
+    </ul>
+
+    <h3>3.2 Three-Phase Commit</h3>
+    <div class="highlight">
+      <div class="label">HotStuff Phases</div>
+      <strong>Prepare</strong> → Leader proposes a block, replicas vote<br>
+      <strong>Pre-Commit</strong> → Leader aggregates votes into a Quorum Certificate (QC)<br>
+      <strong>Commit</strong> → Block is finalized with 2f+1 matching votes
+    </div>
+
+    <h3>3.3 Fault Tolerance</h3>
+    <p>With n = 3f + 1 validators, the protocol tolerates up to f Byzantine (malicious or crashed) nodes. Vela's testnet runs 3 validators (f = 0 for liveness, demonstrating the protocol structure). The architecture supports scaling to any validator set size.</p>
+  </section>
+
+  <!-- 4. Network -->
+  <section id="network">
+    <h2>4. Network Layer</h2>
+    <p>Vela's peer-to-peer networking is built on libp2p, the modular networking stack used by Protocol Labs, Ethereum 2.0, and Polkadot.</p>
+
+    <h3>4.1 Transport</h3>
+    <p>Nodes communicate over TCP with Noise protocol encryption and Yamux stream multiplexing. Every connection is authenticated and encrypted by default.</p>
+
+    <h3>4.2 Message Propagation — Gossipsub</h3>
+    <p>Blocks, transactions, and consensus messages are propagated using Gossipsub, a pubsub protocol optimized for blockchain workloads. Messages are published to three topic channels:</p>
+    <ul>
+      <li><strong>vela-blocks</strong> — new blocks and chain sync messages</li>
+      <li><strong>vela-transactions</strong> — new transactions from wallets</li>
+      <li><strong>vela-consensus</strong> — votes and proposals between validators</li>
+    </ul>
+
+    <h3>4.3 Peer Discovery</h3>
+    <p>Local peers are discovered automatically via mDNS (multicast DNS). For remote peers, bootstrap addresses can be provided via CLI arguments or hardcoded in the binary. On startup, nodes send a SyncRequest to catch up on any blocks they missed while offline.</p>
+  </section>
+
+  <!-- 5. Cryptography -->
+  <section id="cryptography">
+    <h2>5. Cryptography</h2>
+
+    <h3>5.1 Digital Signatures — Ed25519</h3>
+    <p>All transactions and consensus votes are signed using Ed25519 (RFC 8032), an elliptic curve signature scheme offering:</p>
+    <ul>
+      <li><strong>Fast verification</strong> — significantly faster than ECDSA (secp256k1)</li>
+      <li><strong>Small keys</strong> — 32-byte private keys, 32-byte public keys, 64-byte signatures</li>
+      <li><strong>Deterministic signatures</strong> — no random nonce needed, eliminating a class of implementation bugs</li>
+    </ul>
+    <p>Addresses in Vela are the raw 32-byte Ed25519 public key, prefixed with <code>vela:</code> for human readability.</p>
+
+    <h3>5.2 Hashing — Blake3</h3>
+    <p>Vela uses Blake3 for all hashing operations: block hashes, transaction hashes, Merkle roots, and signing payloads. Blake3 is a cryptographic hash function that is:</p>
+    <ul>
+      <li><strong>Extremely fast</strong> — significantly outperforms SHA-256 and SHA-3</li>
+      <li><strong>Parallelizable</strong> — designed for SIMD and multi-threaded hashing</li>
+      <li><strong>Secure</strong> — based on the BLAKE2 and ChaCha families with a wide security margin</li>
+    </ul>
+  </section>
+
+  <!-- 6. Tokenomics -->
+  <section id="tokenomics">
+    <h2>6. Tokenomics</h2>
+
+    <div class="highlight">
+      <div class="label">Token Parameters</div>
+      <strong>Name:</strong> VELA<br>
+      <strong>Total Supply:</strong> 1,000,000,000 (1 billion)<br>
+      <strong>Smallest Unit:</strong> nVELA (1 VELA = 1,000,000,000 nVELA)<br>
+      <strong>Transaction Fee:</strong> Minimum 1 nVELA per transaction
+    </div>
+
+    <h3>6.1 Genesis Distribution</h3>
+    <p>At genesis, the entire supply is allocated to a faucet address. This is a testnet design choice — the faucet allows any user to request tokens for testing. In a mainnet scenario, distribution would follow a more structured allocation.</p>
+
+    <h3>6.2 Faucet</h3>
+    <p>The testnet faucet distributes 10,000 VELA per request with a 24-hour cooldown per address. Faucet transactions are signed by the faucet's Ed25519 key and processed through the same transaction pipeline as user transactions.</p>
+
+    <h3>6.3 Future: Validator Rewards</h3>
+    <p>The architecture is designed to support validator staking and block rewards in future iterations. Leaders who successfully propose blocks will earn transaction fees collected from the included transactions.</p>
+  </section>
+
+  <!-- 7. Roadmap -->
+  <section id="roadmap">
+    <h2>7. Roadmap</h2>
+    <div class="roadmap">
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text"><strong>Phase 1 — Core Protocol</strong><br>Custom blockchain with HotStuff BFT, libp2p, Ed25519, persistent storage</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text"><strong>Phase 2 — Testnet Launch</strong><br>Live testnet with block explorer, web wallet, and faucet</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot done"></div>
+        <div class="roadmap-text"><strong>Phase 3 — Transaction Validation</strong><br>Nonce enforcement, balance checks, mempool deduplication, chain sync</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot active"></div>
+        <div class="roadmap-text"><strong>Phase 4 — Network Hardening</strong><br>Bootstrap peers, chain sync protocol, improved peer management</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot future"></div>
+        <div class="roadmap-text"><strong>Phase 5 — Smart Contracts</strong><br>Basic programmable transactions and on-chain logic execution</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-dot future"></div>
+        <div class="roadmap-text"><strong>Phase 6 — Mainnet</strong><br>Production deployment with expanded validator set, staking, and governance</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Conclusion -->
+  <section id="conclusion">
+    <h2>8. Conclusion</h2>
+    <p>Vela Network demonstrates that a fully functional Layer-1 blockchain can be built from scratch with modern tools. By choosing Rust, HotStuff BFT, libp2p, Ed25519, and Blake3, the project achieves a balance of performance, security, and clarity.</p>
+    <p>Every component is open source and designed to be read, studied, and extended. Vela is not just a blockchain — it is a reference implementation for anyone who wants to understand how blockchains actually work under the hood.</p>
+    <p style="margin-top:24px;color:#64748b;font-size:.85rem">The full source code is available at <a href="https://github.com/OrDex78/vela-network" target="_blank" style="color:#38bdf8;text-decoration:none">github.com/OrDex78/vela-network</a>.</p>
+  </section>
+
+</div>
+
+<footer>
+  <p>Built by <a href="https://github.com/OrDex78" target="_blank">Gaurav Sharma</a> · <a href="https://twitter.com/gauravshar64966" target="_blank">@gauravshar64966</a></p>
+  <p style="margin-top:8px">&copy; 2025 Vela Network</p>
+</footer>
+
+</body>
+</html>
