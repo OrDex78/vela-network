@@ -306,6 +306,32 @@ async fn post_send_tx(
     Ok(Json(TxResponse { status: "accepted".into(), tx_hash }))
 }
 
+async fn get_tx(
+    State(state): State<NodeState>,
+    Path(hash): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let blocks = state.blocks.read().await;
+    for block in blocks.iter() {
+        for tx in &block.transactions {
+            if tx.hash().to_hex() == hash {
+                let from_hex = hex::encode(tx.from.as_bytes());
+                let to_hex = hex::encode(tx.to.as_bytes());
+                return Ok(Json(serde_json::json!({
+                    "hash": tx.hash().to_hex(),
+                    "from": format!("vela:{}", from_hex),
+                    "to": format!("vela:{}", to_hex),
+                    "amount": tx.amount,
+                    "fee": tx.fee,
+                    "nonce": tx.nonce,
+                    "block": block.header.height,
+                    "timestamp": block.header.timestamp,
+                })));
+            }
+        }
+    }
+    Err((StatusCode::NOT_FOUND, Json(ErrorResponse { error: "transaction not found".into() })))
+}
+
 async fn get_explorer() -> axum::response::Html<&'static str> {
     axum::response::Html(include_str!("explorer.html"))
 }
@@ -320,6 +346,7 @@ pub fn make_router(state: NodeState) -> Router {
         .route("/validators", get(get_validators))
         .route("/faucet/{address}", post(post_faucet))
         .route("/send_tx", post(post_send_tx))
+        .route("/tx/{hash}", get(get_tx))
         .with_state(state)
 }
 

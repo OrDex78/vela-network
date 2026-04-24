@@ -89,8 +89,8 @@
 </div>
 
 <div class="search-bar">
-  <input type="text" id="search-input" placeholder="Search by address (vela:...)">
-  <button onclick="searchAddress()">Search</button>
+  <input type="text" id="search-input" placeholder="Search by address (vela:...) or transaction hash">
+  <button onclick="search()">Search</button>
 </div>
 
 <div id="search-results" style="padding: 0 40px 24px; display:none">
@@ -147,29 +147,73 @@ function formatSupply(n) {
   return (n / 1_000_000_000).toFixed(2) + 'B VELA';
 }
 
-async function searchAddress() {
-  const addr = document.getElementById('search-input').value.trim();
-  if (!addr) return;
-  const [balData, txData] = await Promise.all([fetchBalance(addr), fetchTxs(addr)]);
-  document.getElementById('search-addr').textContent = addr;
-  document.getElementById('search-balance').textContent = balData.balance + ' VELA';
-  const txs = txData.transactions || [];
+async function search() {
+  const input = document.getElementById('search-input').value.trim();
+  if (!input) return;
+
+  const resultsEl = document.getElementById('search-results');
   const txsEl = document.getElementById('search-txs');
-  if (txs.length === 0) {
-    txsEl.innerHTML = '<div class="empty-txs">No transactions found</div>';
-  } else {
-    txsEl.innerHTML = txs.reverse().map(tx => `
-      <div class="tx-card">
-        <div class="tx-hash">TX: ${tx.hash.substring(0,32)}...</div>
-        <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from.substring(0,24)}...</span></div>
-        <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to.substring(0,24)}...</span></div>
-        <div class="tx-row"><span class="tx-key">Amount</span><span class="tx-val">${tx.amount} VELA</span></div>
-        <div class="tx-row"><span class="tx-key">Block</span><span class="tx-val">#${tx.block}</span></div>
-        <div class="tx-row"><span class="tx-key">Time</span><span class="tx-val">${timeAgo(tx.timestamp)}</span></div>
-      </div>
-    `).join('');
+  const addrEl = document.getElementById('search-addr');
+  const balEl = document.getElementById('search-balance');
+
+  // TX hash: 64 hex chars, no vela: prefix
+  if (!input.startsWith('vela:') && input.length === 64) {
+    try {
+      const tx = await fetch(BASE + '/tx/' + input).then(r => r.json());
+      if (tx.hash) {
+        addrEl.textContent = 'Transaction';
+        balEl.textContent = tx.amount + ' VELA';
+        txsEl.innerHTML = `
+          <div class="tx-card">
+            <div class="tx-hash">Hash: ${tx.hash}</div>
+            <div class="tx-row"><span class="tx-key">Status</span><span class="tx-val" style="color:#22c55e">✅ Confirmed</span></div>
+            <div class="tx-row"><span class="tx-key">Block</span><span class="tx-val">#${tx.block}</span></div>
+            <div class="tx-row"><span class="tx-key">Time</span><span class="tx-val">${new Date(tx.timestamp).toLocaleString()}</span></div>
+            <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from}</span></div>
+            <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to}</span></div>
+            <div class="tx-row"><span class="tx-key">Amount</span><span class="tx-val">${tx.amount} VELA</span></div>
+            <div class="tx-row"><span class="tx-key">Fee</span><span class="tx-val">${tx.fee} VELA</span></div>
+          </div>
+        `;
+        resultsEl.style.display = 'block';
+        return;
+      }
+    } catch(e) {}
+    txsEl.innerHTML = '<div class="empty-txs">Transaction not found</div>';
+    addrEl.textContent = input.substring(0,16) + '...';
+    balEl.textContent = '—';
+    resultsEl.style.display = 'block';
+    return;
   }
-  document.getElementById('search-results').style.display = 'block';
+
+  // Address search
+  try {
+    const [balData, txData] = await Promise.all([
+      fetch(BASE + '/balance/' + input).then(r => r.json()),
+      fetch(BASE + '/transactions/' + input).then(r => r.json())
+    ]);
+    addrEl.textContent = input;
+    balEl.textContent = balData.balance + ' VELA';
+    const txs = txData.transactions || [];
+    if (txs.length === 0) {
+      txsEl.innerHTML = '<div class="empty-txs">No transactions found</div>';
+    } else {
+      txsEl.innerHTML = txs.reverse().map(tx => `
+        <div class="tx-card">
+          <div class="tx-hash">TX: ${tx.hash.substring(0,32)}...</div>
+          <div class="tx-row"><span class="tx-key">From</span><span class="tx-val">${tx.from.substring(0,24)}...</span></div>
+          <div class="tx-row"><span class="tx-key">To</span><span class="tx-val">${tx.to.substring(0,24)}...</span></div>
+          <div class="tx-row"><span class="tx-key">Amount</span><span class="tx-val">${tx.amount} VELA</span></div>
+          <div class="tx-row"><span class="tx-key">Block</span><span class="tx-val">#${tx.block}</span></div>
+          <div class="tx-row"><span class="tx-key">Time</span><span class="tx-val">${timeAgo(tx.timestamp)}</span></div>
+        </div>
+      `).join('');
+    }
+    resultsEl.style.display = 'block';
+  } catch(e) {
+    txsEl.innerHTML = '<div class="empty-txs">Not found</div>';
+    resultsEl.style.display = 'block';
+  }
 }
 
 async function showBlockDetail(height) {
@@ -191,7 +235,7 @@ function closeModal() {
 }
 
 document.getElementById('search-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') searchAddress();
+  if (e.key === 'Enter') search();
 });
 
 async function loadValidators() {
