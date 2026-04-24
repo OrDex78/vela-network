@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vela Faucet</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; color: #e2e8f0; font-family: 'Courier New', monospace; min-height: 100vh; }
+header { background: #0d1117; border-bottom: 1px solid #1e3a5f; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
+header h1 { font-size: 1.4rem; color: #38bdf8; letter-spacing: 2px; }
+header span { background: #0ea5e9; color: #000; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+.container { max-width: 500px; margin: 60px auto; padding: 0 20px; text-align: center; }
+.drop { font-size: 4rem; margin-bottom: 16px; }
+h2 { color: #38bdf8; margin-bottom: 8px; }
+p { color: #64748b; font-size: 0.85rem; margin-bottom: 32px; }
+.card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 12px; padding: 24px; }
+input { width: 100%; background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-bottom: 12px; }
+input:focus { outline: none; border-color: #38bdf8; }
+button { background: #0ea5e9; color: #000; border: none; padding: 12px 20px; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; font-size: 0.9rem; width: 100%; }
+button:hover { background: #38bdf8; }
+button:disabled { background: #1e3a5f; color: #475569; cursor: not-allowed; }
+.status { padding: 12px; border-radius: 8px; font-size: 0.8rem; margin-top: 12px; display: none; }
+.status.success { background: #0ea5e920; border: 1px solid #0ea5e940; color: #0ea5e9; display: block; }
+.status.error { background: #ef444420; border: 1px solid #ef444440; color: #ef4444; display: block; }
+.info { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+.info-card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 8px; padding: 16px; }
+.info-card .label { color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
+.info-card .value { color: #38bdf8; font-size: 1.2rem; font-weight: bold; margin-top: 4px; }
+.nav { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+.nav a { color: #38bdf8; font-size: 0.8rem; text-decoration: none; border: 1px solid #1e3a5f; padding: 6px 16px; border-radius: 6px; }
+.nav a:hover { border-color: #38bdf8; }
+.cooldown { color: #64748b; font-size: 0.75rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ VELA FAUCET</h1>
+  <span>TESTNET</span>
+</header>
+
+<div class="container">
+  <div class="drop">💧</div>
+  <h2>Get Test VELA</h2>
+  <p>Request 100 VELA every 24 hours to test the network.</p>
+
+  <div class="card">
+    <input type="text" id="address" placeholder="Your address (vela:...)">
+    <button id="btn" onclick="requestTokens()">Request 100 VELA</button>
+    <div class="cooldown" id="cooldown"></div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="info">
+    <div class="info-card">
+      <div class="label">Amount per request</div>
+      <div class="value">100 VELA</div>
+    </div>
+    <div class="info-card">
+      <div class="label">Cooldown</div>
+      <div class="value">24 hours</div>
+    </div>
+    <div class="info-card">
+      <div class="label">Block Height</div>
+      <div class="value" id="block-height">—</div>
+    </div>
+    <div class="info-card">
+      <div class="label">Network</div>
+      <div class="value" style="font-size:0.9rem">Testnet</div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <a href="index.html">💰 Wallet</a>
+    <a href="https://vela-network-production.up.railway.app" target="_blank">🔍 Explorer</a>
+  </div>
+</div>
+
+<script>
+const RPC = 'https://vela-network-production.up.railway.app';
+
+// Faucet wallet — this is a testnet-only key, not real value
+const FAUCET_PRIV = '0000000000000000000000000000000000000000000000000000000000000001';
+const FAUCET_PUB  = '4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29';
+const FAUCET_ADDR = 'vela:4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29';
+
+const NACL_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js';
+function loadScript(src) {
+  return new Promise((res) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res;
+    document.head.appendChild(s);
+  });
+}
+
+async function requestTokens() {
+  const address = document.getElementById('address').value.trim();
+  const status = document.getElementById('status');
+  const btn = document.getElementById('btn');
+
+  if (!address.startsWith('vela:') || address.length < 10) {
+    showStatus(status, '❌ Enter a valid vela: address', 'error');
+    return;
+  }
+
+  // Check cooldown
+  const lastReq = localStorage.getItem('faucet_last_' + address);
+  if (lastReq && Date.now() - parseInt(lastReq) < 24 * 60 * 60 * 1000) {
+    const hrs = Math.ceil((24 * 60 * 60 * 1000 - (Date.now() - parseInt(lastReq))) / 3600000);
+    showStatus(status, `⏳ Cooldown: ${hrs} hours remaining for this address`, 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const nonce = Date.now();
+    const resp = await fetch(RPC + '/send_tx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: FAUCET_ADDR,
+        to: address,
+        amount: 100,
+        fee: 1,
+        nonce: nonce
+      })
+    }).then(r => r.json());
+
+    if (resp.tx_hash) {
+      localStorage.setItem('faucet_last_' + address, Date.now().toString());
+      showStatus(status, '✅ 100 VELA sent! TX: ' + resp.tx_hash.substring(0, 32) + '...', 'success');
+    } else {
+      showStatus(status, '❌ ' + (resp.error || 'Failed'), 'error');
+    }
+  } catch(e) {
+    showStatus(status, '❌ Cannot connect to node', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Request 100 VELA';
+}
+
+function showStatus(el, msg, type) {
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+async function loadStatus() {
+  try {
+    const s = await fetch(RPC + '/status').then(r => r.json());
+    document.getElementById('block-height').textContent = s.block_height;
+  } catch(e) {}
+}
+
+loadStatus();
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
