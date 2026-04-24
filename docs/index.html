@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vela Wallet</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; color: #e2e8f0; font-family: 'Courier New', monospace; min-height: 100vh; }
+header { background: #0d1117; border-bottom: 1px solid #1e3a5f; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
+header h1 { font-size: 1.4rem; color: #38bdf8; letter-spacing: 2px; }
+header span { background: #0ea5e9; color: #000; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
+.container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+.card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+.card h2 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+.address-box { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; word-break: break-all; font-size: 0.75rem; color: #38bdf8; margin-bottom: 12px; }
+.balance { font-size: 2rem; font-weight: bold; color: #38bdf8; margin: 8px 0; }
+.balance span { font-size: 1rem; color: #64748b; }
+button { background: #0ea5e9; color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; margin-top: 8px; }
+button:hover { background: #38bdf8; }
+button.secondary { background: transparent; color: #38bdf8; border: 1px solid #1e3a5f; }
+button.secondary:hover { border-color: #38bdf8; }
+button.danger { background: transparent; color: #ef4444; border: 1px solid #ef444440; }
+button.danger:hover { background: #ef444420; }
+input { width: 100%; background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 10px 12px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-bottom: 8px; }
+input:focus { outline: none; border-color: #38bdf8; }
+.status { padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; margin-top: 8px; display: none; }
+.status.success { background: #0ea5e920; border: 1px solid #0ea5e940; color: #0ea5e9; display: block; }
+.status.error { background: #ef444420; border: 1px solid #ef444440; color: #ef4444; display: block; }
+.nav { display: flex; gap: 8px; margin-bottom: 20px; }
+.nav button { width: auto; flex: 1; }
+.section { display: none; }
+.section.active { display: block; }
+#dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.node-info { font-size: 0.75rem; color: #64748b; }
+.tx-hash { font-size: 0.7rem; color: #38bdf8; word-break: break-all; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div id="dot"></div>
+  <h1>⬡ VELA WALLET</h1>
+  <span>TESTNET</span>
+</header>
+
+<div class="container">
+
+  <!-- No wallet -->
+  <div id="no-wallet">
+    <div class="card">
+      <h2>Welcome to Vela Network</h2>
+      <p style="color:#64748b;font-size:0.85rem;margin-bottom:16px">A custom L1 blockchain built from scratch in Rust. Generate a wallet to get started.</p>
+      <button onclick="generateWallet()">⚡ Generate New Wallet</button>
+      <button class="secondary" onclick="showImport()" style="margin-top:8px">Import Existing Wallet</button>
+    </div>
+    <div class="card" id="import-section" style="display:none">
+      <h2>Import Wallet</h2>
+      <input type="text" id="import-key" placeholder="Enter your private key (hex)">
+      <button onclick="importWallet()">Import</button>
+    </div>
+  </div>
+
+  <!-- Wallet UI -->
+  <div id="wallet-ui" style="display:none">
+    <div class="card">
+      <h2>Your Address</h2>
+      <div class="address-box" id="display-address">—</div>
+      <div class="balance" id="display-balance">0 <span>VELA</span></div>
+      <div class="node-info" id="node-info">Connecting to testnet...</div>
+      <button class="secondary" onclick="refreshBalance()" style="margin-top:12px">↻ Refresh</button>
+      <button class="danger" onclick="deleteWallet()" style="margin-top:4px">🗑 Delete Wallet</button>
+    </div>
+
+    <div class="nav">
+      <button onclick="showSection('send')" class="secondary">💸 Send</button>
+      <button onclick="showSection('receive')" class="secondary">📥 Receive</button>
+      <button onclick="showSection('keys')" class="secondary">🔑 Keys</button>
+    </div>
+
+    <div id="send" class="section active">
+      <div class="card">
+        <h2>Send VELA</h2>
+        <input type="text" id="to-address" placeholder="Recipient address (vela:...)">
+        <input type="number" id="amount" placeholder="Amount (VELA)">
+        <input type="number" id="nonce" placeholder="Nonce (use 1 for first tx)" value="1">
+        <button onclick="sendTx()">Send Transaction</button>
+        <div id="send-status" class="status"></div>
+      </div>
+    </div>
+
+    <div id="receive" class="section">
+      <div class="card">
+        <h2>Receive VELA</h2>
+        <p style="color:#64748b;font-size:0.8rem;margin-bottom:12px">Share your address to receive VELA tokens:</p>
+        <div class="address-box" id="receive-address">—</div>
+        <button onclick="copyAddress()">Copy Address</button>
+      </div>
+    </div>
+
+    <div id="keys" class="section">
+      <div class="card">
+        <h2>Private Key</h2>
+        <p style="color:#ef4444;font-size:0.8rem;margin-bottom:12px">⚠️ Never share your private key with anyone!</p>
+        <div class="address-box" id="display-privkey" style="color:#ef4444;display:none">—</div>
+        <button class="danger" onclick="togglePrivkey()">Show Private Key</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const RPC = 'https://vela-network-production.up.railway.app';
+
+// ── Crypto (Ed25519 via noble) ─────────────────────────────────────────────
+// We use tweetnacl for Ed25519 in browser
+const NACL_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js';
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+let nacl;
+async function ensureNacl() {
+  if (window.nacl) { nacl = window.nacl; return; }
+  await loadScript(NACL_CDN);
+  nacl = window.nacl;
+}
+
+function bytesToHex(b) { return Array.from(b).map(x => x.toString(16).padStart(2,'0')).join(''); }
+function hexToBytes(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16))); }
+
+async function generateWallet() {
+  await ensureNacl();
+  const kp = nacl.sign.keyPair();
+  const privHex = bytesToHex(kp.secretKey.slice(0,32));
+  const pubHex = bytesToHex(kp.publicKey);
+  const address = 'vela:' + pubHex;
+  saveWallet(privHex, pubHex, address);
+  showWallet();
+}
+
+function importWallet() {
+  const privHex = document.getElementById('import-key').value.trim();
+  if (privHex.length !== 64) { alert('Invalid key — must be 64 hex chars'); return; }
+  // derive pubkey from privkey using nacl
+  ensureNacl().then(() => {
+    const kp = nacl.sign.keyPair.fromSeed(hexToBytes(privHex));
+    const pubHex = bytesToHex(kp.publicKey);
+    const address = 'vela:' + pubHex;
+    saveWallet(privHex, pubHex, address);
+    showWallet();
+  });
+}
+
+function saveWallet(priv, pub, address) {
+  localStorage.setItem('vela_priv', priv);
+  localStorage.setItem('vela_pub', pub);
+  localStorage.setItem('vela_address', address);
+}
+
+function loadWallet() {
+  return {
+    priv: localStorage.getItem('vela_priv'),
+    pub: localStorage.getItem('vela_pub'),
+    address: localStorage.getItem('vela_address'),
+  };
+}
+
+function deleteWallet() {
+  if (!confirm('Delete wallet? Make sure you saved your private key!')) return;
+  localStorage.removeItem('vela_priv');
+  localStorage.removeItem('vela_pub');
+  localStorage.removeItem('vela_address');
+  document.getElementById('wallet-ui').style.display = 'none';
+  document.getElementById('no-wallet').style.display = 'block';
+}
+
+function showImport() {
+  document.getElementById('import-section').style.display = 'block';
+}
+
+function showWallet() {
+  const w = loadWallet();
+  document.getElementById('no-wallet').style.display = 'none';
+  document.getElementById('wallet-ui').style.display = 'block';
+  document.getElementById('display-address').textContent = w.address;
+  document.getElementById('receive-address').textContent = w.address;
+  document.getElementById('display-privkey').textContent = w.priv;
+  refreshBalance();
+}
+
+async function refreshBalance() {
+  const w = loadWallet();
+  try {
+    const status = await fetch(RPC + '/status').then(r => r.json());
+    document.getElementById('node-info').textContent =
+      `Block #${status.block_height} | ${status.peer_count} peers | mempool: ${status.mempool_size}`;
+    const bal = await fetch(RPC + '/balance/' + w.address).then(r => r.json());
+    document.getElementById('display-balance').innerHTML = `${bal.balance} <span>VELA</span>`;
+  } catch(e) {
+    document.getElementById('node-info').textContent = 'Cannot connect to testnet';
+  }
+}
+
+async function sendTx() {
+  const w = loadWallet();
+  const to = document.getElementById('to-address').value.trim();
+  const amount = parseInt(document.getElementById('amount').value);
+  const nonce = parseInt(document.getElementById('nonce').value);
+  const status = document.getElementById('send-status');
+
+  if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
+
+  try {
+    const resp = await fetch(RPC + '/send_tx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: w.address, to, amount, fee: 1, nonce })
+    }).then(r => r.json());
+
+    if (resp.tx_hash) {
+      showStatus(status, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
+      document.getElementById('nonce').value = nonce + 1;
+    } else {
+      showStatus(status, '❌ ' + (resp.error || 'Failed'), 'error');
+    }
+  } catch(e) {
+    showStatus(status, '❌ Cannot connect to node', 'error');
+  }
+}
+
+function showStatus(el, msg, type) {
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function copyAddress() {
+  const w = loadWallet();
+  navigator.clipboard.writeText(w.address);
+  alert('Address copied!');
+}
+
+function togglePrivkey() {
+  const el = document.getElementById('display-privkey');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// Init
+window.onload = () => {
+  const w = loadWallet();
+  if (w.address) showWallet();
+};
+</script>
+</body>
+</html>
