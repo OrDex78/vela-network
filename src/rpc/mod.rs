@@ -33,6 +33,22 @@ impl NodeState {
             world_state: Arc::new(RwLock::new(WorldState::new())),
         }
     }
+
+    pub fn new_with_state(
+        port: u16,
+        tx_broadcast: mpsc::Sender<Transaction>,
+        blocks: Vec<Block>,
+        world_state: WorldState,
+    ) -> Self {
+        NodeState {
+            port,
+            peer_count: Arc::new(RwLock::new(0)),
+            blocks: Arc::new(RwLock::new(blocks)),
+            mempool: Arc::new(RwLock::new(vec![])),
+            tx_broadcast,
+            world_state: Arc::new(RwLock::new(world_state)),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -161,14 +177,12 @@ async fn post_send_tx(
         req.nonce,
     );
 
-    // Attach signature if provided
     if let Some(sig_hex) = req.signature {
         if let Ok(sig_bytes) = hex::decode(&sig_hex) {
             tx.signature = Some(sig_bytes);
         }
     }
 
-    // Verify signature if present
     if tx.signature.is_some() && !tx.verify() {
         return Err((
             StatusCode::BAD_REQUEST,

@@ -14,6 +14,8 @@ use tracing::info;
 
 use network::{NetworkMessage, P2PNode};
 use rpc::{NodeState, start_rpc};
+use storage::db::BlockDb;
+use storage::state::WorldState;
 use types::{Address, Block, BlockHeader, Hash, Transaction};
 
 #[derive(Parser, Debug)]
@@ -24,6 +26,9 @@ struct Args {
 
     #[arg(long, value_delimiter = ',')]
     bootstrap: Vec<String>,
+
+    #[arg(long, default_value = "vela-db")]
+    db_path: String,
 }
 
 #[tokio::main]
@@ -42,10 +47,34 @@ async fn main() -> Result<()> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
+    // ── Load or init persistent storage ──────────────────────────────────────
+    let db_path = format!("{}-{}", args.db_path, args.port);
+    let block_db = BlockDb::open(&db_path)?;
+
+    let mut initial_blocks = block_db.load_all_blocks()?;
+    if initial_blocks.is_empty() {
+        let genesis = Block::genesis();
+        block_db.save_block(&genesis)?;
+        initial_blocks.push(genesis);
+    }
+
+    // Replay blocks to rebuild world state
+    let mut initial_world_state = WorldState::new();
+    for block in &initial_blocks {
+        initial_world_state.apply_block(block).ok();
+    }
+
+    info!("Loaded {} blocks from disk", initial_blocks.len());
+
     let (tx_in, mut rx_in) = mpsc::channel::<NetworkMessage>(256);
     let (tx_broadcast, mut rx_broadcast) = mpsc::channel::<Transaction>(256);
 
-    let node_state = NodeState::new(args.port, tx_broadcast);
+    let node_state = NodeState::new_with_state(
+        args.port,
+        tx_broadcast,
+        initial_blocks,
+        initial_world_state,
+    );
 
     let node = P2PNode::new(args.port, bootstrap_peers, tx_in)?;
     let tx_out = node.tx_out.clone();
@@ -87,8 +116,12 @@ async fn main() -> Result<()> {
 
     let state_prod = node_state.clone();
     let tx_out_prod = tx_out.clone();
+    let db_path2 = format!("{}-{}", args.db_path, args.port);
     tokio::spawn(async move {
-        let mut round = 1u64;
+        let block_db = BlockDb::open(&db_path2).expect("db open");
+        let mut round = state_prod.blocks.read().await.last()
+            .map(|b| b.header.round + 1).unwrap_or(1);
+
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
@@ -116,6 +149,7 @@ async fn main() -> Result<()> {
 
             info!("⛏️  Producing block #{} with {} txs", height, block.transactions.len());
             state_prod.world_state.write().await.apply_block(&block).ok();
+            block_db.save_block(&block).ok();
             blocks.push(block.clone());
             drop(blocks);
             drop(mempool);
