@@ -9,7 +9,8 @@ mod types;
 use anyhow::Result;
 use clap::Parser;
 use libp2p::Multiaddr;
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
 use tracing::info;
 
 use network::{NetworkMessage, P2PNode};
@@ -26,9 +27,6 @@ struct Args {
 
     #[arg(long, value_delimiter = ',')]
     bootstrap: Vec<String>,
-
-    #[arg(long, default_value = "vela-db")]
-    db_path: String,
 }
 
 #[tokio::main]
@@ -47,9 +45,9 @@ async fn main() -> Result<()> {
         .filter_map(|s| s.parse().ok())
         .collect();
 
-    // ── Load or init persistent storage ──────────────────────────────────────
-    let db_path = format!("{}-{}", args.db_path, args.port);
-    let block_db = BlockDb::open(&db_path)?;
+    // ── Persistent storage ────────────────────────────────────────────────────
+    let db_path = format!("vela-db-{}", args.port);
+    let block_db = Arc::new(BlockDb::open(&db_path)?);
 
     let mut initial_blocks = block_db.load_all_blocks()?;
     if initial_blocks.is_empty() {
@@ -58,7 +56,6 @@ async fn main() -> Result<()> {
         initial_blocks.push(genesis);
     }
 
-    // Replay blocks to rebuild world state
     let mut initial_world_state = WorldState::new();
     for block in &initial_blocks {
         initial_world_state.apply_block(block).ok();
@@ -86,6 +83,7 @@ async fn main() -> Result<()> {
     });
 
     let state_p2p = node_state.clone();
+    let db_p2p = block_db.clone();
     tokio::spawn(async move {
         while let Some(msg) = rx_in.recv().await {
             match msg {
@@ -95,6 +93,7 @@ async fn main() -> Result<()> {
                     let tip = blocks.last().map(|b| b.header.height).unwrap_or(0);
                     if block.header.height == tip + 1 {
                         state_p2p.world_state.write().await.apply_block(&block).ok();
+                        db_p2p.save_block(&block).ok();
                         blocks.push(block);
                         info!("✅ Block committed, chain height: {}", tip + 1);
                     }
@@ -116,9 +115,8 @@ async fn main() -> Result<()> {
 
     let state_prod = node_state.clone();
     let tx_out_prod = tx_out.clone();
-    let db_path2 = format!("{}-{}", args.db_path, args.port);
+    let db_prod = block_db.clone();
     tokio::spawn(async move {
-        let block_db = BlockDb::open(&db_path2).expect("db open");
         let mut round = state_prod.blocks.read().await.last()
             .map(|b| b.header.round + 1).unwrap_or(1);
 
@@ -149,7 +147,7 @@ async fn main() -> Result<()> {
 
             info!("⛏️  Producing block #{} with {} txs", height, block.transactions.len());
             state_prod.world_state.write().await.apply_block(&block).ok();
-            block_db.save_block(&block).ok();
+            db_prod.save_block(&block).ok();
             blocks.push(block.clone());
             drop(blocks);
             drop(mempool);
