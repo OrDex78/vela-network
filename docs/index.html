@@ -112,6 +112,13 @@ footer .copy{font-size:.7rem;color:#334155}
   <div class="stat"><div class="value">Ed25519</div><div class="label">Signing</div></div>
 </div>
 
+<div id="live-stats" style="display:flex;justify-content:center;gap:32px;padding:16px 40px;background:#0d1117;border-top:1px solid #1e3a5f;border-bottom:1px solid #1e3a5f;font-family:'Courier New',monospace;font-size:0.8rem">
+  <span style="color:#64748b">LIVE: <span id="ls-height" style="color:#22c55e">—</span> blocks</span>
+  <span style="color:#64748b">TXNS: <span id="ls-txs" style="color:#22c55e">—</span></span>
+  <span style="color:#64748b">LEADER: <span id="ls-leader" style="color:#22c55e">—</span></span>
+  <span style="color:#64748b">MEMPOOL: <span id="ls-mempool" style="color:#22c55e">—</span></span>
+</div>
+
 <!-- Links -->
 <div class="section-title"><h2>Get Started</h2><p>Everything you need to interact with the Vela testnet</p></div>
 <div class="cards">
@@ -170,5 +177,19 @@ footer .copy{font-size:.7rem;color:#334155}
   <div class="copy">&copy; 2025 Vela Network. All rights reserved.</div>
 </footer>
 
+<script>
+async function fetchLiveStats() {
+  try {
+    const r = await fetch('https://vela-network-production.up.railway.app/status');
+    const d = await r.json();
+    document.getElementById('ls-height').textContent = d.block_height;
+    document.getElementById('ls-txs').textContent = d.total_txs;
+    document.getElementById('ls-leader').textContent = 'Validator ' + d.current_leader;
+    document.getElementById('ls-mempool').textContent = d.mempool_size;
+  } catch(e) {}
+}
+fetchLiveStats();
+setInterval(fetchLiveStats, 5000);
+</script>
 </body>
 </html>
