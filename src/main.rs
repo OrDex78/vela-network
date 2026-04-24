@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
     info!("My validator address: {}", my_address);
 
     // ── Persistent storage ────────────────────────────────────────────────────
-    let db_path = format!("vela-db-{}", args.port);
+    let db_path = format!("vela-db2-{}", args.port);
     let block_db = Arc::new(BlockDb::open(&db_path)?);
 
     let mut initial_blocks = block_db.load_all_blocks()?;
