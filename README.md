@@ -26,7 +26,7 @@ Vela is an independent Layer-1 blockchain with its own consensus engine, network
 |---|---|
 | **Token** | VELA (1 VELA = 1,000,000,000 nVELA) |
 | **Consensus** | HotStuff BFT (3-phase commit, linear complexity) |
-| **Networking** | libp2p — Gossipsub, mDNS, Noise encryption |
+| **Networking** | libp2p: Gossipsub, mDNS, Noise encryption |
 | **Signatures** | Ed25519 (RFC 8032) |
 | **Hashing** | Blake3 |
 | **Storage** | sled embedded database |
@@ -66,15 +66,15 @@ src/
 ├── main.rs              # Node entry point, validator setup, block production
 ├── types.rs             # Block, Transaction, Hash, Address, Vote, QuorumCert
 ├── consensus/
-│   └── hotstuff.rs      # HotStuff BFT — 3-phase voting, QC formation, leader rotation
+│   └── hotstuff.rs      # HotStuff BFT: 3-phase voting, QC formation, leader rotation
 ├── network/
-│   └── mod.rs           # libp2p node — Gossipsub, mDNS, peer management, chain sync
+│   └── mod.rs           # libp2p node: Gossipsub, mDNS, peer management, chain sync
 ├── rpc/
-│   ├── mod.rs           # Axum HTTP API — status, blocks, balance, send_tx, faucet
+│   ├── mod.rs           # Axum HTTP API: status, blocks, balance, send_tx, faucet
 │   └── explorer.html    # Built-in block explorer served at /
 ├── storage/
 │   ├── db.rs            # sled-backed persistent block storage
-│   └── state.rs         # World state — balances, nonces, faucet cooldowns
+│   └── state.rs         # World state: balances, nonces, faucet cooldowns
 ├── crypto/              # Keypair utilities
 ├── mempool/             # Transaction pool
 docs/
@@ -109,13 +109,13 @@ Open the explorer: [http://localhost:9001](http://localhost:9001)
 Open three terminals:
 
 ```bash
-# Terminal 1 — Validator 0 (leader for round 0)
+# Terminal 1: Validator 0 (leader for round 0)
 cargo run --bin vela-node -- --port 8001 --validator-index 0
 
-# Terminal 2 — Validator 1
+# Terminal 2: Validator 1
 cargo run --bin vela-node -- --port 8002 --validator-index 1 --bootstrap /ip4/127.0.0.1/tcp/8001
 
-# Terminal 3 — Validator 2
+# Terminal 3: Validator 2
 cargo run --bin vela-node -- --port 8003 --validator-index 2 --bootstrap /ip4/127.0.0.1/tcp/8001
 ```
 
@@ -125,13 +125,13 @@ Nodes discover each other via mDNS on the same machine, or connect via the `--bo
 
 ## HotStuff BFT Consensus
 
-HotStuff achieves **linear message complexity** — O(n) messages per round vs O(n²) in PBFT.
+HotStuff achieves **linear message complexity**: O(n) messages per round vs O(n²) in PBFT.
 
 **Three phases per block:**
 
-1. **Prepare** — Leader proposes a block, replicas vote
-2. **Pre-Commit** — Leader aggregates votes into a Quorum Certificate (QC)
-3. **Commit** — Block is finalized with 2f+1 matching votes
+1. **Prepare**: Leader proposes a block, replicas vote
+2. **Pre-Commit**: Leader aggregates votes into a Quorum Certificate (QC)
+3. **Commit**: Block is finalized with 2f+1 matching votes
 
 With `n = 3f + 1` validators, the protocol tolerates up to `f` Byzantine faults. Leader rotation is round-robin across the validator set.
 
@@ -153,13 +153,13 @@ With `n = 3f + 1` validators, the protocol tolerates up to `f` Byzantine faults.
 
 ## Roadmap
 
-- [x] Core types — Block, Transaction, Hash, Vote, QuorumCert
+- [x] Core types: Block, Transaction, Hash, Vote, QuorumCert
 - [x] HotStuff BFT consensus engine
 - [x] Mempool with fee prioritization
 - [x] World state + transaction execution
 - [x] Ed25519 signing + verification
-- [x] P2P networking — libp2p, Gossipsub, mDNS
-- [x] HTTP API — Axum-based JSON endpoints
+- [x] P2P networking: libp2p, Gossipsub, mDNS
+- [x] HTTP API: Axum-based JSON endpoints
 - [x] Built-in block explorer
 - [x] Web wallet (Ed25519 key generation + signing)
 - [x] Testnet faucet with cooldowns
@@ -177,7 +177,7 @@ With `n = 3f + 1` validators, the protocol tolerates up to `f` Byzantine faults.
 
 ## Built By
 
-**Gaurav Sharma** — [GitHub @OrDex78](https://github.com/OrDex78) · [Twitter @gauravshar64966](https://twitter.com/gauravshar64966)
+**Gaurav Sharma** · [GitHub @OrDex78](https://github.com/OrDex78) · [Twitter @gauravshar64966](https://twitter.com/gauravshar64966)
 
 ---
 

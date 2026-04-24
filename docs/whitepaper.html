@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vela Network — Whitepaper</title>
+<title>Vela Network: Whitepaper</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0f;color:#c9d1d9;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased}
@@ -100,7 +100,7 @@ footer a:hover{text-decoration:underline}
     <ol>
       <li><a href="#abstract">Abstract</a></li>
       <li><a href="#introduction">Introduction</a></li>
-      <li><a href="#consensus">Consensus — HotStuff BFT</a></li>
+      <li><a href="#consensus">Consensus: HotStuff BFT</a></li>
       <li><a href="#network">Network Layer</a></li>
       <li><a href="#cryptography">Cryptography</a></li>
       <li><a href="#tokenomics">Tokenomics</a></li>
@@ -112,34 +112,34 @@ footer a:hover{text-decoration:underline}
   <!-- 1. Abstract -->
   <section id="abstract">
     <h2>1. Abstract</h2>
-    <p>Vela Network is an independent Layer-1 blockchain designed and implemented entirely from scratch in Rust. It is not a fork of any existing chain. Every component — consensus, networking, transaction processing, state management, and cryptographic signing — has been purpose-built to understand and demonstrate the fundamental mechanics of a modern blockchain system.</p>
+    <p>Vela Network is an independent Layer-1 blockchain designed and implemented entirely from scratch in Rust. It is not a fork of any existing chain. Every component (consensus, networking, transaction processing, state management, and cryptographic signing) has been purpose-built to understand and demonstrate the fundamental mechanics of a modern blockchain system.</p>
     <p>The network uses HotStuff BFT for consensus, libp2p for peer-to-peer communication, Ed25519 for digital signatures, and Blake3 for hashing. It runs a live testnet with a block explorer, web wallet, and faucet.</p>
   </section>
 
   <!-- 2. Introduction -->
   <section id="introduction">
     <h2>2. Introduction</h2>
-    <p>Most blockchain projects start by forking an existing codebase — Geth, Substrate, Cosmos SDK — and customizing configuration. While practical, this approach obscures the underlying mechanics and limits deep understanding of the system.</p>
+    <p>Most blockchain projects start by forking an existing codebase (Geth, Substrate, Cosmos SDK) and customizing configuration. While practical, this approach obscures the underlying mechanics and limits deep understanding of the system.</p>
     <p>Vela takes the opposite approach: build everything from first principles. The goals are:</p>
     <ul>
-      <li><strong>Educational transparency</strong> — every line of code is written to be understood, not inherited.</li>
-      <li><strong>Minimal dependencies</strong> — rely only on well-audited cryptographic and networking libraries.</li>
-      <li><strong>Production-grade architecture</strong> — despite being educational, the system uses real BFT consensus, persistent storage, and proper transaction validation.</li>
+      <li><strong>Educational transparency</strong>: every line of code is written to be understood, not inherited.</li>
+      <li><strong>Minimal dependencies</strong>: rely only on well-audited cryptographic and networking libraries.</li>
+      <li><strong>Production-grade architecture</strong>: despite being educational, the system uses real BFT consensus, persistent storage, and proper transaction validation.</li>
     </ul>
     <p>Vela is written in Rust for its memory safety guarantees, zero-cost abstractions, and excellent async runtime support via Tokio.</p>
   </section>
 
   <!-- 3. Consensus -->
   <section id="consensus">
-    <h2>3. Consensus — HotStuff BFT</h2>
+    <h2>3. Consensus: HotStuff BFT</h2>
     <p>Vela implements the HotStuff Byzantine Fault Tolerant consensus protocol, originally published by Yin et al. (2019). HotStuff provides several advantages over classical BFT protocols like PBFT:</p>
 
     <h3>3.1 Why HotStuff?</h3>
     <ul>
-      <li><strong>Linear message complexity</strong> — each phase requires only O(n) messages, compared to O(n²) in PBFT.</li>
-      <li><strong>Pipelined rounds</strong> — proposals, votes, and commits are overlapped across rounds for higher throughput.</li>
-      <li><strong>Deterministic finality</strong> — once a block is committed, it is final. No probabilistic confirmation.</li>
-      <li><strong>Leader rotation</strong> — a round-robin leader schedule ensures fairness among validators.</li>
+      <li><strong>Linear message complexity</strong>: each phase requires only O(n) messages, compared to O(n²) in PBFT.</li>
+      <li><strong>Pipelined rounds</strong>: proposals, votes, and commits are overlapped across rounds for higher throughput.</li>
+      <li><strong>Deterministic finality</strong>: once a block is committed, it is final. No probabilistic confirmation.</li>
+      <li><strong>Leader rotation</strong>: a round-robin leader schedule ensures fairness among validators.</li>
     </ul>
 
     <h3>3.2 Three-Phase Commit</h3>
@@ -162,12 +162,12 @@ footer a:hover{text-decoration:underline}
     <h3>4.1 Transport</h3>
     <p>Nodes communicate over TCP with Noise protocol encryption and Yamux stream multiplexing. Every connection is authenticated and encrypted by default.</p>
 
-    <h3>4.2 Message Propagation — Gossipsub</h3>
+    <h3>4.2 Message Propagation: Gossipsub</h3>
     <p>Blocks, transactions, and consensus messages are propagated using Gossipsub, a pubsub protocol optimized for blockchain workloads. Messages are published to three topic channels:</p>
     <ul>
-      <li><strong>vela-blocks</strong> — new blocks and chain sync messages</li>
-      <li><strong>vela-transactions</strong> — new transactions from wallets</li>
-      <li><strong>vela-consensus</strong> — votes and proposals between validators</li>
+      <li><strong>vela-blocks</strong>: new blocks and chain sync messages</li>
+      <li><strong>vela-transactions</strong>: new transactions from wallets</li>
+      <li><strong>vela-consensus</strong>: votes and proposals between validators</li>
     </ul>
 
     <h3>4.3 Peer Discovery</h3>
@@ -178,21 +178,21 @@ footer a:hover{text-decoration:underline}
   <section id="cryptography">
     <h2>5. Cryptography</h2>
 
-    <h3>5.1 Digital Signatures — Ed25519</h3>
+    <h3>5.1 Digital Signatures: Ed25519</h3>
     <p>All transactions and consensus votes are signed using Ed25519 (RFC 8032), an elliptic curve signature scheme offering:</p>
     <ul>
-      <li><strong>Fast verification</strong> — significantly faster than ECDSA (secp256k1)</li>
-      <li><strong>Small keys</strong> — 32-byte private keys, 32-byte public keys, 64-byte signatures</li>
-      <li><strong>Deterministic signatures</strong> — no random nonce needed, eliminating a class of implementation bugs</li>
+      <li><strong>Fast verification</strong>: significantly faster than ECDSA (secp256k1)</li>
+      <li><strong>Small keys</strong>: 32-byte private keys, 32-byte public keys, 64-byte signatures</li>
+      <li><strong>Deterministic signatures</strong>: no random nonce needed, eliminating a class of implementation bugs</li>
     </ul>
     <p>Addresses in Vela are the raw 32-byte Ed25519 public key, prefixed with <code>vela:</code> for human readability.</p>
 
-    <h3>5.2 Hashing — Blake3</h3>
+    <h3>5.2 Hashing: Blake3</h3>
     <p>Vela uses Blake3 for all hashing operations: block hashes, transaction hashes, Merkle roots, and signing payloads. Blake3 is a cryptographic hash function that is:</p>
     <ul>
-      <li><strong>Extremely fast</strong> — significantly outperforms SHA-256 and SHA-3</li>
-      <li><strong>Parallelizable</strong> — designed for SIMD and multi-threaded hashing</li>
-      <li><strong>Secure</strong> — based on the BLAKE2 and ChaCha families with a wide security margin</li>
+      <li><strong>Extremely fast</strong>: significantly outperforms SHA-256 and SHA-3</li>
+      <li><strong>Parallelizable</strong>: designed for SIMD and multi-threaded hashing</li>
+      <li><strong>Secure</strong>: based on the BLAKE2 and ChaCha families with a wide security margin</li>
     </ul>
   </section>
 
@@ -209,7 +209,7 @@ footer a:hover{text-decoration:underline}
     </div>
 
     <h3>6.1 Genesis Distribution</h3>
-    <p>At genesis, the entire supply is allocated to a faucet address. This is a testnet design choice — the faucet allows any user to request tokens for testing. In a mainnet scenario, distribution would follow a more structured allocation.</p>
+    <p>At genesis, the entire supply is allocated to a faucet address. This is a testnet design choice. The faucet allows any user to request tokens for testing. In a mainnet scenario, distribution would follow a more structured allocation.</p>
 
     <h3>6.2 Faucet</h3>
     <p>The testnet faucet distributes 10,000 VELA per request with a 24-hour cooldown per address. Faucet transactions are signed by the faucet's Ed25519 key and processed through the same transaction pipeline as user transactions.</p>
@@ -224,27 +224,27 @@ footer a:hover{text-decoration:underline}
     <div class="roadmap">
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 1 — Core Protocol</strong><br>Custom blockchain with HotStuff BFT, libp2p, Ed25519, persistent storage</div>
+        <div class="roadmap-text"><strong>Phase 1: Core Protocol</strong><br>Custom blockchain with HotStuff BFT, libp2p, Ed25519, persistent storage</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 2 — Testnet Launch</strong><br>Live testnet with block explorer, web wallet, and faucet</div>
+        <div class="roadmap-text"><strong>Phase 2: Testnet Launch</strong><br>Live testnet with block explorer, web wallet, and faucet</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot done"></div>
-        <div class="roadmap-text"><strong>Phase 3 — Transaction Validation</strong><br>Nonce enforcement, balance checks, mempool deduplication, chain sync</div>
+        <div class="roadmap-text"><strong>Phase 3: Transaction Validation</strong><br>Nonce enforcement, balance checks, mempool deduplication, chain sync</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot active"></div>
-        <div class="roadmap-text"><strong>Phase 4 — Network Hardening</strong><br>Bootstrap peers, chain sync protocol, improved peer management</div>
+        <div class="roadmap-text"><strong>Phase 4: Network Hardening</strong><br>Bootstrap peers, chain sync protocol, improved peer management</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot future"></div>
-        <div class="roadmap-text"><strong>Phase 5 — Smart Contracts</strong><br>Basic programmable transactions and on-chain logic execution</div>
+        <div class="roadmap-text"><strong>Phase 5: Smart Contracts</strong><br>Basic programmable transactions and on-chain logic execution</div>
       </div>
       <div class="roadmap-item">
         <div class="roadmap-dot future"></div>
-        <div class="roadmap-text"><strong>Phase 6 — Mainnet</strong><br>Production deployment with expanded validator set, staking, and governance</div>
+        <div class="roadmap-text"><strong>Phase 6: Mainnet</strong><br>Production deployment with expanded validator set, staking, and governance</div>
       </div>
     </div>
   </section>
@@ -253,7 +253,7 @@ footer a:hover{text-decoration:underline}
   <section id="conclusion">
     <h2>8. Conclusion</h2>
     <p>Vela Network demonstrates that a fully functional Layer-1 blockchain can be built from scratch with modern tools. By choosing Rust, HotStuff BFT, libp2p, Ed25519, and Blake3, the project achieves a balance of performance, security, and clarity.</p>
-    <p>Every component is open source and designed to be read, studied, and extended. Vela is not just a blockchain — it is a reference implementation for anyone who wants to understand how blockchains actually work under the hood.</p>
+    <p>Every component is open source and designed to be read, studied, and extended. Vela is not just a blockchain. It is a reference implementation for anyone who wants to understand how blockchains actually work under the hood.</p>
     <p style="margin-top:24px;color:#64748b;font-size:.85rem">The full source code is available at <a href="https://github.com/OrDex78/vela-network" target="_blank" style="color:#38bdf8;text-decoration:none">github.com/OrDex78/vela-network</a>.</p>
   </section>
 
