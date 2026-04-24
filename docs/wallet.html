@@ -83,7 +83,7 @@ input:focus { outline: none; border-color: #38bdf8; }
         <h2>Send VELA</h2>
         <input type="text" id="to-address" placeholder="Recipient address (vela:...)">
         <input type="number" id="amount" placeholder="Amount (VELA)">
-        <input type="number" id="nonce" placeholder="Nonce" value="1">
+        <input type="number" id="nonce" placeholder="Nonce (auto-filled if empty)">
         <button onclick="sendTx()">Send Transaction</button>
         <div id="send-status" class="status"></div>
       </div>
@@ -216,10 +216,22 @@ async function sendTx() {
   const w = loadWallet();
   const to = document.getElementById('to-address').value.trim();
   const amount = parseInt(document.getElementById('amount').value);
-  const nonce = parseInt(document.getElementById('nonce').value);
+  let nonce = parseInt(document.getElementById('nonce').value);
   const status = document.getElementById('send-status');
 
   if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
+
+  // Auto-fetch nonce if empty
+  if (!nonce || isNaN(nonce)) {
+    try {
+      const balData = await fetch(RPC + '/balance/' + w.address).then(r => r.json());
+      nonce = (balData.nonce || 0) + 1;
+      document.getElementById('nonce').value = nonce;
+    } catch(e) {
+      showStatus(status, 'Cannot connect to node', 'error');
+      return;
+    }
+  }
 
   const fee = 1;
   const kp = nacl.sign.keyPair.fromSeed(hexToBytes(w.priv));
