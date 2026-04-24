@@ -87,6 +87,7 @@ impl P2PNode {
                 noise::Config::new,
                 yamux::Config::default,
             )?
+            .with_dns()?
             .with_behaviour(|key| {
                 let gossipsub = gossipsub::Behaviour::new(
                     MessageAuthenticity::Signed(key.clone()),

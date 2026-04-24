@@ -29,7 +29,7 @@ thiserror = "1"
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-libp2p = { version = "0.56.0", features = ["tcp", "mdns", "gossipsub", "noise", "yamux", "tokio", "macros"] }
+libp2p = { version = "0.56.0", features = ["tcp", "dns", "mdns", "gossipsub", "noise", "yamux", "tokio", "macros"] }
 futures = "0.3.32"
 clap = { version = "4.6.1", features = ["derive"] }
 axum = "0.8.9"
