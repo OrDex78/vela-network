@@ -9,4 +9,4 @@ WORKDIR /app
 COPY --from=builder /app/target/release/vela-node .
 COPY --from=builder /app/src/rpc/explorer.html src/rpc/explorer.html
 EXPOSE 8001 9001
-CMD ["./vela-node", "--port", "8001"]
+CMD ["./vela-node", "--port", "8001", "--validator-index", "0"]
