@@ -128,6 +128,10 @@ impl P2PNode {
 
         info!("Vela node listening on port {} | peer: {}", self.port, swarm.local_peer_id());
 
+        let retry_peers = self.bootstrap_peers.clone();
+        let mut retry_interval = tokio::time::interval(Duration::from_secs(30));
+        retry_interval.tick().await; // consume immediate first tick
+
         loop {
             tokio::select! {
                 Some(msg) = self.rx_out.recv() => {
@@ -178,12 +182,23 @@ impl P2PNode {
                             }
                         }
                         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                            info!("Connected to {peer_id}");
+                            info!("✅ Connected to peer: {}", peer_id);
+                        }
+                        SwarmEvent::OutgoingConnectionError { error, .. } => {
+                            warn!("❌ Failed to connect to bootstrap: {}", error);
                         }
                         SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
-                            info!("Disconnected from {peer_id}: {cause:?}");
+                            warn!("🔌 Connection closed: {} — {:?}", peer_id, cause);
                         }
                         _ => {}
+                    }
+                }
+                _ = retry_interval.tick() => {
+                    for addr in &retry_peers {
+                        match swarm.dial(addr.clone()) {
+                            Ok(_) => info!("Retrying bootstrap peer: {addr}"),
+                            Err(e) => warn!("Failed to retry {addr}: {e}"),
+                        }
                     }
                 }
             }
