@@ -3,307 +3,171 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vela Wallet</title>
+<title>Vela Network — Custom L1 Blockchain</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0a0f; color: #e2e8f0; font-family: 'Courier New', monospace; min-height: 100vh; }
-header { background: #0d1117; border-bottom: 1px solid #1e3a5f; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
-header h1 { font-size: 1.4rem; color: #38bdf8; letter-spacing: 2px; }
-header span { background: #0ea5e9; color: #000; padding: 2px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; }
-.container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
-.card { background: #0d1117; border: 1px solid #1e3a5f; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-.card h2 { color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
-.address-box { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; word-break: break-all; font-size: 0.75rem; color: #38bdf8; margin-bottom: 12px; }
-.balance { font-size: 2rem; font-weight: bold; color: #38bdf8; margin: 8px 0; }
-.balance span { font-size: 1rem; color: #64748b; }
-button { background: #0ea5e9; color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-family: 'Courier New', monospace; font-weight: bold; cursor: pointer; font-size: 0.85rem; width: 100%; margin-top: 8px; }
-button:hover { background: #38bdf8; }
-button.secondary { background: transparent; color: #38bdf8; border: 1px solid #1e3a5f; }
-button.secondary:hover { border-color: #38bdf8; }
-button.danger { background: transparent; color: #ef4444; border: 1px solid #ef444440; }
-button.danger:hover { background: #ef444420; }
-input { width: 100%; background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 10px 12px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-bottom: 8px; }
-input:focus { outline: none; border-color: #38bdf8; }
-.status { padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; margin-top: 8px; display: none; }
-.status.success { background: #0ea5e920; border: 1px solid #0ea5e940; color: #0ea5e9; display: block; }
-.status.error { background: #ef444420; border: 1px solid #ef444440; color: #ef4444; display: block; }
-.nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-.nav button { width: auto; flex: 1; }
-.section { display: none; }
-.section.active { display: block; }
-#dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.node-info { font-size: 0.75rem; color: #64748b; }
-.tx-item { background: #0a0a0f; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px; margin-bottom: 8px; font-size: 0.75rem; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e2e8f0;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── Nav ──────────────────────────────────────────────────────────── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.85);backdrop-filter:blur(12px);border-bottom:1px solid #1e3a5f}
+nav .inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:16px 24px}
+nav .logo{display:flex;align-items:center;gap:10px;font-size:1.2rem;font-weight:700;color:#38bdf8;letter-spacing:1.5px;text-decoration:none}
+nav .logo .hex{font-size:1.5rem}
+nav .badge{background:#0ea5e9;color:#000;padding:2px 10px;border-radius:20px;font-size:.65rem;font-weight:700;letter-spacing:1px}
+nav .links{display:flex;gap:24px}
+nav .links a{color:#94a3b8;text-decoration:none;font-size:.85rem;transition:color .2s}
+nav .links a:hover{color:#38bdf8}
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero{text-align:center;padding:160px 24px 80px;position:relative}
+.hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,#38bdf810 0%,transparent 70%);pointer-events:none}
+.hero h1{font-size:3.5rem;font-weight:800;letter-spacing:-1px;margin-bottom:16px;background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero .tagline{font-size:1.15rem;color:#94a3b8;max-width:520px;margin:0 auto 40px;line-height:1.6}
+.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero .cta a{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:10px;font-weight:600;font-size:.9rem;text-decoration:none;transition:all .2s}
+.btn-primary{background:#0ea5e9;color:#000}
+.btn-primary:hover{background:#38bdf8;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:#38bdf8;border:1px solid #1e3a5f}
+.btn-outline:hover{border-color:#38bdf8;transform:translateY(-1px)}
+
+/* ── Stats ────────────────────────────────────────────────────────── */
+.stats{max-width:900px;margin:0 auto 80px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:0 24px}
+.stat{background:#0d1117;border:1px solid #1e3a5f;border-radius:12px;padding:28px 20px;text-align:center}
+.stat .value{font-size:1.4rem;font-weight:700;color:#38bdf8;margin-bottom:6px}
+.stat .label{font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:1.5px}
+
+/* ── Cards Grid ───────────────────────────────────────────────────── */
+.section-title{text-align:center;margin-bottom:40px}
+.section-title h2{font-size:1.8rem;font-weight:700;margin-bottom:8px}
+.section-title p{color:#64748b;font-size:.95rem}
+.cards{max-width:900px;margin:0 auto 80px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:0 24px}
+.card-link{background:#0d1117;border:1px solid #1e3a5f;border-radius:14px;padding:32px 28px;text-decoration:none;color:#e2e8f0;transition:all .25s;display:flex;flex-direction:column;gap:8px}
+.card-link:hover{border-color:#38bdf8;transform:translateY(-3px);box-shadow:0 8px 30px #38bdf808}
+.card-link .icon{font-size:1.8rem;margin-bottom:4px}
+.card-link h3{font-size:1.05rem;font-weight:600;color:#f1f5f9}
+.card-link p{font-size:.8rem;color:#64748b;line-height:1.5}
+
+/* ── Tech ─────────────────────────────────────────────────────────── */
+.tech{max-width:900px;margin:0 auto 80px;padding:0 24px}
+.tech-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.tech-item{background:#0d1117;border:1px solid #1e3a5f;border-radius:14px;padding:28px 24px}
+.tech-item h3{font-size:.95rem;font-weight:600;color:#38bdf8;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.tech-item p{font-size:.82rem;color:#94a3b8;line-height:1.6}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+footer{border-top:1px solid #1e3a5f;padding:40px 24px;text-align:center}
+footer .built{font-size:.85rem;color:#64748b;margin-bottom:12px}
+footer .built a{color:#38bdf8;text-decoration:none}
+footer .built a:hover{text-decoration:underline}
+footer .socials{display:flex;gap:20px;justify-content:center;margin-bottom:12px}
+footer .socials a{color:#64748b;text-decoration:none;font-size:.8rem;transition:color .2s}
+footer .socials a:hover{color:#38bdf8}
+footer .copy{font-size:.7rem;color:#334155}
+
+/* ── Live status chip ─────────────────────────────────────────────── */
+.live-chip{display:inline-flex;align-items:center;gap:6px;background:#0d1117;border:1px solid #1e3a5f;border-radius:20px;padding:6px 14px;font-size:.75rem;color:#64748b;margin-bottom:24px}
+.live-chip .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media(max-width:700px){
+  .hero h1{font-size:2.2rem}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .cards,.tech-grid{grid-template-columns:1fr}
+  nav .links{display:none}
+}
 </style>
 </head>
 <body>
 
-<header>
-  <div id="dot"></div>
-  <h1>⬡ VELA WALLET</h1>
-  <span>TESTNET</span>
-</header>
-
-<div class="container">
-
-  <div id="no-wallet">
-    <div class="card">
-      <h2>Welcome to Vela Network</h2>
-      <p style="color:#64748b;font-size:0.85rem;margin-bottom:16px">A custom L1 blockchain built from scratch in Rust. Generate a wallet to get started.</p>
-      <button onclick="generateWallet()">⚡ Generate New Wallet</button>
-      <button class="secondary" onclick="showImport()" style="margin-top:8px">Import Existing Wallet</button>
-    </div>
-    <div class="card" id="import-section" style="display:none">
-      <h2>Import Wallet</h2>
-      <input type="text" id="import-key" placeholder="Enter your private key (hex)">
-      <button onclick="importWallet()">Import</button>
+<!-- Nav -->
+<nav>
+  <div class="inner">
+    <a href="/" class="logo"><span class="hex">⬡</span> VELA NETWORK <span class="badge">TESTNET</span></a>
+    <div class="links">
+      <a href="/wallet">Wallet</a>
+      <a href="/faucet">Faucet</a>
+      <a href="https://github.com/OrDex78/vela-network" target="_blank">GitHub</a>
     </div>
   </div>
+</nav>
 
-  <div id="wallet-ui" style="display:none">
-    <div class="card">
-      <h2>Your Address</h2>
-      <div class="address-box" id="display-address">—</div>
-      <div class="balance" id="display-balance">0 <span>VELA</span></div>
-      <div class="node-info" id="node-info">Connecting to testnet...</div>
-      <button class="secondary" onclick="refreshBalance()" style="margin-top:12px">↻ Refresh</button>
-      <button class="danger" onclick="deleteWallet()" style="margin-top:4px">🗑 Delete Wallet</button>
-    </div>
-
-    <div class="nav">
-      <button onclick="showSection('send')" class="secondary">💸 Send</button>
-      <button onclick="showSection('receive')" class="secondary">📥 Receive</button>
-      <button onclick="showSection('history')" class="secondary">📜 History</button>
-      <button onclick="showSection('keys')" class="secondary">🔑 Keys</button>
-    </div>
-
-    <div id="send" class="section active">
-      <div class="card">
-        <h2>Send VELA</h2>
-        <input type="text" id="to-address" placeholder="Recipient address (vela:...)">
-        <input type="number" id="amount" placeholder="Amount (VELA)">
-        <input type="number" id="nonce" placeholder="Nonce" value="1">
-        <button onclick="sendTx()">Send Transaction</button>
-        <div id="send-status" class="status"></div>
-      </div>
-    </div>
-
-    <div id="receive" class="section">
-      <div class="card">
-        <h2>Receive VELA</h2>
-        <p style="color:#64748b;font-size:0.8rem;margin-bottom:12px">Share your address to receive VELA tokens:</p>
-        <div class="address-box" id="receive-address">—</div>
-        <button onclick="copyAddress()">Copy Address</button>
-      </div>
-    </div>
-
-    <div id="history" class="section">
-      <div class="card">
-        <h2>Transaction History</h2>
-        <div id="tx-list"><div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">Click to load...</div></div>
-      </div>
-    </div>
-
-    <div id="keys" class="section">
-      <div class="card">
-        <h2>Private Key</h2>
-        <p style="color:#ef4444;font-size:0.8rem;margin-bottom:12px">⚠️ Never share your private key with anyone!</p>
-        <div class="address-box" id="display-privkey" style="color:#ef4444;display:none">—</div>
-        <button class="danger" onclick="togglePrivkey()">Show Private Key</button>
-      </div>
-    </div>
+<!-- Hero -->
+<section class="hero">
+  <div class="live-chip"><span class="dot"></span> Live on testnet</div>
+  <h1>Vela Network</h1>
+  <p class="tagline">A custom L1 blockchain built from scratch in Rust. HotStuff BFT consensus, libp2p networking, Ed25519 cryptography — no forks, no shortcuts.</p>
+  <div class="cta">
+    <a href="/wallet" class="btn-primary">Open Wallet</a>
+    <a href="https://github.com/OrDex78/vela-network" target="_blank" class="btn-outline">View Source</a>
   </div>
+</section>
 
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><div class="value">HotStuff BFT</div><div class="label">Consensus</div></div>
+  <div class="stat"><div class="value">3</div><div class="label">Validators</div></div>
+  <div class="stat"><div class="value">1B VELA</div><div class="label">Total Supply</div></div>
+  <div class="stat"><div class="value">Ed25519</div><div class="label">Signing</div></div>
 </div>
 
-<script>
-const RPC = 'https://vela-network-production.up.railway.app';
-const NACL_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/tweetnacl/1.0.3/nacl.min.js';
+<!-- Links -->
+<div class="section-title"><h2>Get Started</h2><p>Everything you need to interact with the Vela testnet</p></div>
+<div class="cards">
+  <a href="https://vela-network-production.up.railway.app" target="_blank" class="card-link">
+    <div class="icon">🔍</div>
+    <h3>Explorer</h3>
+    <p>Browse blocks, transactions, and validators on the live testnet explorer.</p>
+  </a>
+  <a href="/wallet" class="card-link">
+    <div class="icon">💳</div>
+    <h3>Wallet</h3>
+    <p>Generate a wallet, send and receive VELA tokens, and view your transaction history.</p>
+  </a>
+  <a href="/faucet" class="card-link">
+    <div class="icon">💧</div>
+    <h3>Faucet</h3>
+    <p>Get free testnet VELA tokens to start experimenting with the network.</p>
+  </a>
+  <a href="https://github.com/OrDex78/vela-network" target="_blank" class="card-link">
+    <div class="icon">📦</div>
+    <h3>GitHub</h3>
+    <p>Read the source code, open issues, and contribute to the Vela Network project.</p>
+  </a>
+</div>
 
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = res; s.onerror = rej;
-    document.head.appendChild(s);
-  });
-}
+<!-- Technology -->
+<div class="section-title"><h2>Under the Hood</h2><p>Purpose-built infrastructure — every layer written from scratch</p></div>
+<div class="tech">
+  <div class="tech-grid">
+    <div class="tech-item">
+      <h3>⚡ HotStuff BFT Consensus</h3>
+      <p>A pipelined three-phase BFT protocol that achieves consensus in linear message complexity. Tolerates up to f Byzantine faults with 3f+1 validators, providing deterministic finality every round.</p>
+    </div>
+    <div class="tech-item">
+      <h3>🌐 libp2p Networking</h3>
+      <p>Peer-to-peer networking powered by libp2p with Gossipsub for block and transaction propagation, mDNS for local peer discovery, and Noise for encrypted transport.</p>
+    </div>
+    <div class="tech-item">
+      <h3>🔐 Ed25519 Cryptography</h3>
+      <p>All transactions and consensus votes are signed with Ed25519. Addresses are derived from public keys, providing a secure and compact identity scheme with fast verification.</p>
+    </div>
+    <div class="tech-item">
+      <h3>💾 Persistent Storage</h3>
+      <p>Blocks are persisted to disk using sled, an embedded database. On restart, the node replays all blocks to reconstruct the world state and resumes from where it left off.</p>
+    </div>
+  </div>
+</div>
 
-let nacl;
-async function ensureNacl() {
-  if (window.nacl) { nacl = window.nacl; return; }
-  await loadScript(NACL_CDN);
-  nacl = window.nacl;
-}
+<!-- Footer -->
+<footer>
+  <div class="socials">
+    <a href="https://twitter.com/gauravshar64966" target="_blank">Twitter @gauravshar64966</a>
+    <a href="https://github.com/OrDex78" target="_blank">GitHub @OrDex78</a>
+  </div>
+  <div class="built">Built by <a href="https://github.com/OrDex78" target="_blank">Gaurav Sharma</a></div>
+  <div class="copy">&copy; 2025 Vela Network. All rights reserved.</div>
+</footer>
 
-function bytesToHex(b) { return Array.from(b).map(x => x.toString(16).padStart(2,'0')).join(''); }
-function hexToBytes(h) { return new Uint8Array(h.match(/.{1,2}/g).map(b => parseInt(b,16))); }
-
-async function generateWallet() {
-  await ensureNacl();
-  const kp = nacl.sign.keyPair();
-  const privHex = bytesToHex(kp.secretKey.slice(0,32));
-  const pubHex = bytesToHex(kp.publicKey);
-  const address = 'vela:' + pubHex;
-  saveWallet(privHex, pubHex, address);
-  showWallet();
-}
-
-function importWallet() {
-  const privHex = document.getElementById('import-key').value.trim();
-  if (privHex.length !== 64) { alert('Invalid key — must be 64 hex chars'); return; }
-  ensureNacl().then(() => {
-    const kp = nacl.sign.keyPair.fromSeed(hexToBytes(privHex));
-    const pubHex = bytesToHex(kp.publicKey);
-    const address = 'vela:' + pubHex;
-    saveWallet(privHex, pubHex, address);
-    showWallet();
-  });
-}
-
-function saveWallet(priv, pub, address) {
-  localStorage.setItem('vela_priv', priv);
-  localStorage.setItem('vela_pub', pub);
-  localStorage.setItem('vela_address', address);
-}
-
-function loadWallet() {
-  return {
-    priv: localStorage.getItem('vela_priv'),
-    pub: localStorage.getItem('vela_pub'),
-    address: localStorage.getItem('vela_address'),
-  };
-}
-
-function deleteWallet() {
-  if (!confirm('Delete wallet? Make sure you saved your private key!')) return;
-  localStorage.removeItem('vela_priv');
-  localStorage.removeItem('vela_pub');
-  localStorage.removeItem('vela_address');
-  document.getElementById('wallet-ui').style.display = 'none';
-  document.getElementById('no-wallet').style.display = 'block';
-}
-
-function showImport() {
-  document.getElementById('import-section').style.display = 'block';
-}
-
-function showWallet() {
-  const w = loadWallet();
-  document.getElementById('no-wallet').style.display = 'none';
-  document.getElementById('wallet-ui').style.display = 'block';
-  document.getElementById('display-address').textContent = w.address;
-  document.getElementById('receive-address').textContent = w.address;
-  document.getElementById('display-privkey').textContent = w.priv;
-  refreshBalance();
-}
-
-async function refreshBalance() {
-  const w = loadWallet();
-  try {
-    const status = await fetch(RPC + '/status').then(r => r.json());
-    document.getElementById('node-info').textContent =
-      `Block #${status.block_height} | ${status.peer_count} peers | mempool: ${status.mempool_size}`;
-    const bal = await fetch(RPC + '/balance/' + w.address).then(r => r.json());
-    document.getElementById('display-balance').innerHTML = `${bal.balance} <span>VELA</span>`;
-  } catch(e) {
-    document.getElementById('node-info').textContent = 'Cannot connect to testnet';
-  }
-}
-
-async function sendTx() {
-  await ensureNacl();
-  const w = loadWallet();
-  const to = document.getElementById('to-address').value.trim();
-  const amount = parseInt(document.getElementById('amount').value);
-  const nonce = parseInt(document.getElementById('nonce').value);
-  const status = document.getElementById('send-status');
-
-  if (!to || !amount) { showStatus(status, 'Fill in all fields', 'error'); return; }
-
-  const fee = 1;
-  const kp = nacl.sign.keyPair.fromSeed(hexToBytes(w.priv));
-  const msgParts = [
-    w.address.replace('vela:', ''),
-    to.replace('vela:', ''),
-    amount.toString(),
-    fee.toString(),
-    nonce.toString(),
-  ];
-  const msgBytes = new TextEncoder().encode(msgParts.join(':'));
-  const sigBytes = nacl.sign.detached(msgBytes, kp.secretKey);
-  const sigHex = bytesToHex(sigBytes);
-
-  try {
-    const resp = await fetch(RPC + '/send_tx', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: w.address, to, amount, fee, nonce, signature: sigHex })
-    }).then(r => r.json());
-
-    if (resp.tx_hash) {
-      showStatus(status, '✅ TX sent! Hash: ' + resp.tx_hash, 'success');
-      document.getElementById('nonce').value = nonce + 1;
-    } else {
-      showStatus(status, '❌ ' + (resp.error || 'Failed'), 'error');
-    }
-  } catch(e) {
-    showStatus(status, '❌ Cannot connect to node', 'error');
-  }
-}
-
-async function loadHistory() {
-  const w = loadWallet();
-  const txList = document.getElementById('tx-list');
-  txList.innerHTML = '<div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">Loading...</div>';
-  try {
-    const data = await fetch(RPC + '/transactions/' + w.address).then(r => r.json());
-    const txs = data.transactions || [];
-    if (txs.length === 0) {
-      txList.innerHTML = '<div style="color:#475569;font-size:0.8rem;text-align:center;padding:20px">No transactions yet</div>';
-      return;
-    }
-    txList.innerHTML = txs.reverse().map(tx => {
-      const isSent = tx.from === w.address;
-      return `
-        <div class="tx-item">
-          <div style="color:${isSent ? '#ef4444' : '#22c55e'};margin-bottom:6px;font-weight:bold">${isSent ? '↑ Sent' : '↓ Received'} ${tx.amount} VELA</div>
-          <div style="color:#64748b">${isSent ? 'To: '+tx.to.substring(0,30)+'...' : 'From: '+tx.from.substring(0,30)+'...'}</div>
-          <div style="color:#475569;margin-top:4px">Block #${tx.block} · ${new Date(tx.timestamp).toLocaleString()}</div>
-        </div>
-      `;
-    }).join('');
-  } catch(e) {
-    txList.innerHTML = '<div style="color:#ef4444;font-size:0.8rem;text-align:center;padding:20px">Cannot connect to node</div>';
-  }
-}
-
-function showStatus(el, msg, type) {
-  el.textContent = msg;
-  el.className = 'status ' + type;
-}
-
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id === 'history') loadHistory();
-}
-
-function copyAddress() {
-  const w = loadWallet();
-  navigator.clipboard.writeText(w.address);
-  alert('Address copied!');
-}
-
-function togglePrivkey() {
-  const el = document.getElementById('display-privkey');
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-window.onload = () => {
-  const w = loadWallet();
-  if (w.address) showWallet();
-};
-</script>
 </body>
 </html>
